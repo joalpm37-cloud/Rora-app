@@ -1,0 +1,41 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-obsidian-bg: #0A0A0A;
+  --color-obsidian-card: #141414;
+  --color-obsidian-border: #262626;
+  --color-obsidian-primary: #5AF0B3;
+  --color-obsidian-muted: #A3A3A3;
+}
+
+@layer base {
+  body {
+    @apply bg-obsidian-bg text-white font-sans antialiased;
+  }
+
+  ::-webkit-scrollbar {
+    @apply w-1.5 h-1.5;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-obsidian-border rounded-full hover:bg-obsidian-muted/30 transition-colors;
+  }
+}
+
+.glass-card {
+  @apply bg-obsidian-card border border-obsidian-border rounded-2xl overflow-hidden;
+}
+
+.nav-item-active {
+  @apply bg-obsidian-primary/10 text-obsidian-primary border-r-2 border-obsidian-primary;
+}
+
+.nav-item {
+  @apply flex items-center gap-3 px-6 py-3 text-obsidian-muted hover:text-white hover:bg-white/5 transition-all duration-200;
+}
