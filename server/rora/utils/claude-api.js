@@ -117,17 +117,21 @@ export async function llamarAgenteManaged(agentId, mensajeUsuario, environmentId
       console.log(`📂 Sesión creada: ${sessionId}`);
 
       // 2. Enviar Mensaje (Evento en Array)
+      const eventBody = {
+        events: [
+          {
+            type: 'user.message',
+            content: [{ type: 'text', text: mensajeUsuario }]
+          }
+        ]
+      };
+      
+      console.log('📡 Enviando Evento a Sesión:', JSON.stringify(eventBody));
+
       const eventResponse = await fetch(`https://api.anthropic.com/v1/sessions/${sessionId}/events`, {
         method: 'POST',
         headers: commonHeaders,
-        body: JSON.stringify({
-          events: [
-            {
-              type: 'user.message',
-              content: [{ type: 'text', text: mensajeUsuario }]
-            }
-          ]
-        })
+        body: JSON.stringify(eventBody)
       });
 
       if (!eventResponse.ok) {
