@@ -24,7 +24,7 @@ app.post('/api/rora/agents/test', async (req, res) => {
   const AGENT_ID = 'agent_011Ca82NXWoe3hWykRQCd6bv'; 
 
   try {
-    console.log(`🤖 Iniciando diagnóstico de Agente Managed (${AGENT_ID})...`);
+    console.log(`🤖 Iniciando diagnóstico profundo de Agente Managed (${AGENT_ID})...`);
     
     // Paso 1: Crear o definir el entorno ( Ohio context)
     const commonHeaders = {
@@ -39,34 +39,37 @@ app.post('/api/rora/agents/test', async (req, res) => {
       method: 'POST',
       headers: commonHeaders,
       body: JSON.stringify({
-        name: "Rora Orchestrator Sandbox",
+        name: "Rora Orchestrator Sandbox (Diagnostic)",
         config: { type: "cloud", networking: { type: "unrestricted" } }
       })
     });
 
     const envData = await envResp.json();
     if (!envResp.ok) throw new Error(`Error en entorno: ${JSON.stringify(envData)}`);
+    
     const envId = envData.id;
     console.log(`✅ Entorno temporal listo: ${envId}`);
 
     // Paso 2: Usar el puente de sesiones para hablar con Rora
+    console.log(`🔗 Llamando a llamarAgenteManaged con Agent:${AGENT_ID} y Env:${envId}`);
     const respuesta = await llamarAgenteManaged(AGENT_ID, mensaje || 'Hola RORA, preséntate como Directora de Orquesta.', envId);
     
     res.json({ 
       success: true, 
+      version: 'V2.5.1',
       agent_id: AGENT_ID,
       environment_id: envId,
       respuesta 
     });
   } catch (error) {
-    console.error('Error en orquestación de prueba:', error);
+    console.error('❌ Error en orquestación de prueba (V2.5.1):', error);
     res.status(500).json({ error: error.message });
   }
 });
 
 // Health check / Test endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'RORA Backend is running (V2.5 - Full Orchestration Live)' });
+  res.json({ status: 'ok', message: 'RORA Backend is running (V2.5.1 - Deep Logging Active)' });
 });
 
 // NUEVO: Endpoint para inicializar Managed Agents
