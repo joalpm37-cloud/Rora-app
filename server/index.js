@@ -27,18 +27,28 @@ app.get('/api/health', (req, res) => {
 app.post('/api/rora/agents/setup', async (req, res) => {
   try {
     const agente = await crearAgenteManaged('RORA Central', SYSTEM_PROMPT_RORA);
+    console.log('✅ Agente creado en Anthropic ID:', agente.id);
     
-    // Guardar el ID en Firebase
-    await setDoc(doc(db, 'config', 'managed_agents'), {
-      rora_central_id: agente.id,
-      activatedAt: serverTimestamp(),
-      model: agente.model
-    });
+    let firebaseSaved = false;
+    try {
+      // Intentar guardar el ID en Firebase
+      await setDoc(doc(db, 'config', 'managed_agents'), {
+        rora_central_id: agente.id,
+        activatedAt: serverTimestamp(),
+        model: agente.model
+      });
+      firebaseSaved = true;
+    } catch (dbError) {
+      console.error('⚠️ Error guardando en Firebase (Permisos):', dbError.message);
+    }
 
     res.json({ 
       success: true, 
       agent_id: agente.id,
-      message: 'Agente RORA Central activado correctamente' 
+      firebaseSaved,
+      message: firebaseSaved 
+        ? 'Agente RORA Central activado y guardado en Firebase' 
+        : 'Agente activado en Anthropic, pero falló guardado en Firebase (Usa el agent_id manualmente)'
     });
   } catch (error) {
     console.error('Error configurando agentes (redundancia):', error);
