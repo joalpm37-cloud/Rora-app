@@ -42,7 +42,11 @@ app.post('/api/rora/agents/setup', async (req, res) => {
     });
   } catch (error) {
     console.error('Error configurando agentes (redundancia):', error);
-    res.status(500).json({ error: 'Fallo al activar Managed Agents' });
+    res.status(500).json({ 
+      error: 'Fallo al activar Managed Agents',
+      details: error.message,
+      stack: error.stack
+    });
   }
 });
 
