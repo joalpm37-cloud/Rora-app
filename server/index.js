@@ -4,7 +4,9 @@ import dotenv from 'dotenv';
 import { procesarMensajeRora } from './rora/agentes/rora-central.js';
 import { crearContactoGHL } from './rora/utils/ghl-api.js';
 import { db } from './lib/firebase.js';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, setDoc, doc } from 'firebase/firestore';
+import { crearAgenteManaged } from './rora/utils/claude-api.js';
+import SYSTEM_PROMPT_RORA from './rora/prompts/system-prompt-rora.js';
 
 dotenv.config();
 
@@ -18,7 +20,30 @@ app.use(express.json());
 
 // Health check / Test endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'RORA Backend is running' });
+  res.json({ status: 'ok', message: 'RORA Backend is running (V2 - Subfolder Entry)' });
+});
+
+// NUEVO: Endpoint para inicializar Managed Agents (Duplicado por redundancia)
+app.post('/api/rora/agents/setup', async (req, res) => {
+  try {
+    const agente = await crearAgenteManaged('RORA Central', SYSTEM_PROMPT_RORA);
+    
+    // Guardar el ID en Firebase
+    await setDoc(doc(db, 'config', 'managed_agents'), {
+      rora_central_id: agente.id,
+      activatedAt: serverTimestamp(),
+      model: agente.model
+    });
+
+    res.json({ 
+      success: true, 
+      agent_id: agente.id,
+      message: 'Agente RORA Central activado correctamente' 
+    });
+  } catch (error) {
+    console.error('Error configurando agentes (redundancia):', error);
+    res.status(500).json({ error: 'Fallo al activar Managed Agents' });
+  }
 });
 
 // POST /api/rora/chat - Orquestador principal
