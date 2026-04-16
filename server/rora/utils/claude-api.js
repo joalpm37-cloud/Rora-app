@@ -101,7 +101,7 @@ export async function llamarAgenteManaged(agentId, mensajeUsuario) {
         method: 'POST',
         headers: commonHeaders,
         body: JSON.stringify({ 
-          agent_id: agentId,
+          agent: agentId,
           metadata: { context: 'RORA_TEST_SESSION' }
         })
       });
