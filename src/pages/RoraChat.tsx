@@ -34,7 +34,29 @@ export const RoraChat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const initAgents = async () => {
+    setIsInitializing(true);
+    try {
+      const response = await fetch(getApiUrl('/api/rora/agents/setup'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await response.json();
+      if (data.success) {
+        alert(`¡RORA Central Activado! ID: ${data.agent_id}`);
+      } else {
+        alert('Fallo en la activación de agentes.');
+      }
+    } catch (error) {
+      console.error('Error init agents:', error);
+      alert('Error de conexión al activar agentes.');
+    } finally {
+      setIsInitializing(false);
+    }
+  };
 
   useEffect(() => {
     // Mensaje automático inicial
@@ -148,19 +170,29 @@ export const RoraChat: React.FC = () => {
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] md:h-[calc(100vh-4rem)] max-w-4xl mx-auto w-full">
       {/* Header */}
-      <div className="flex items-center gap-3 pb-4 border-b border-obsidian-border shrink-0">
-        <div className="relative">
-          <div className="w-12 h-12 bg-obsidian-primary/10 rounded-full flex items-center justify-center border border-obsidian-primary/30">
-            <Bot className="w-7 h-7 text-obsidian-primary" />
+      <div className="flex items-center justify-between gap-3 pb-4 border-b border-obsidian-border shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <div className="w-12 h-12 bg-obsidian-primary/10 rounded-full flex items-center justify-center border border-obsidian-primary/30">
+              <Bot className="w-7 h-7 text-obsidian-primary" />
+            </div>
+            <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-obsidian-bg"></div>
           </div>
-          <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-obsidian-bg"></div>
+          <div>
+            <h1 className="font-bold text-xl tracking-tight flex items-center gap-2">
+              RORA
+            </h1>
+            <p className="text-xs text-obsidian-muted font-medium">Orquestador Principal</p>
+          </div>
         </div>
-        <div>
-          <h1 className="font-bold text-xl tracking-tight flex items-center gap-2">
-            RORA
-          </h1>
-          <p className="text-xs text-obsidian-muted font-medium">Orquestador Principal</p>
-        </div>
+
+        <button
+          onClick={initAgents}
+          disabled={isInitializing}
+          className="text-[10px] uppercase tracking-wider px-3 py-1.5 bg-obsidian-primary/10 hover:bg-obsidian-primary/20 border border-obsidian-primary/30 rounded-lg text-obsidian-primary font-bold transition-all disabled:opacity-50"
+        >
+          {isInitializing ? 'Activando...' : '⚙️ Activar Agentes'}
+        </button>
       </div>
 
       {/* Messages */}
