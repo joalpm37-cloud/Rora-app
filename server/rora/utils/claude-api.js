@@ -72,9 +72,9 @@ export async function crearAgenteManaged(nombre, systemPrompt) {
     });
 
     if (!response.ok) {
-        const error = await response.text();
-        console.error('Error creando agente:', error);
-        throw new Error(`Error en Managed Agents: ${response.status}`);
+        const errorData = await response.text();
+        console.error('Error creando agente:', errorData);
+        throw new Error(`Error en Managed Agents: ${response.status} - ${errorData}`);
     }
 
     return await response.json();
