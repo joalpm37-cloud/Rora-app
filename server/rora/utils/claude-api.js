@@ -66,7 +66,7 @@ export async function crearAgenteManaged(nombre, systemPrompt) {
       },
       body: JSON.stringify({
         name: nombre,
-        model: getEnv('CLAUDE_MODEL') || 'claude-3-5-sonnet-20241022',
+        model: 'claude-3-5-sonnet-20240620', // Cambiado de 20241022 por soporte en Beta
         system: systemPrompt
       })
     });
