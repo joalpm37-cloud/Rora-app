@@ -2,6 +2,7 @@ import React from 'react';
 import { Sidebar } from './Sidebar';
 import { MobileHeader } from './MobileHeader';
 import { BottomNav } from './BottomNav';
+import { FloatingChatWidget } from './chat/FloatingChatWidget';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -18,6 +19,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
       </main>
       <BottomNav />
+      <FloatingChatWidget />
     </div>
   );
 };

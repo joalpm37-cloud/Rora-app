@@ -97,6 +97,7 @@ export interface CalendarEvent {
 }
 
 export type MessageType = 'text' | 'ai_response' | 'system_notification';
+export type MessageChannel = 'web' | 'whatsapp' | 'instagram' | 'messenger';
 
 export interface Message {
   id?: string;
@@ -104,6 +105,7 @@ export interface Message {
   senderId: string;
   text: string;
   type: MessageType;
+  channel?: MessageChannel;
   readBy: string[];
   createdAt: Timestamp | Date;
 }
@@ -113,6 +115,7 @@ export interface Conversation {
   agencyId: string;
   participants: string[];
   participantNames?: Record<string, string>;
+  channel?: MessageChannel;
   lastMessage?: string;
   lastMessageAt?: Timestamp | Date;
   unreadCount?: Record<string, number>;
@@ -138,15 +141,18 @@ export interface Notification {
 }
 
 export type CampaignPlatform = 'Instagram' | 'Facebook' | 'Google Ads' | 'LinkedIn' | 'TikTok';
-export type CampaignStatus = 'Activa' | 'Pausada' | 'Completada' | 'Borrador';
+export type CampaignStatus = 'Activa' | 'Pausada' | 'Completada' | 'Borrador' | 'Lista para lanzar';
 
 export interface Campaign {
   id?: string;
   agencyId: string;
   name: string;
+  property?: string;
   platform: CampaignPlatform;
   status: CampaignStatus;
   budget: number;
+  duration?: number;
+  strategy?: any;
   spent: number;
   leads: number;
   cpl: number;

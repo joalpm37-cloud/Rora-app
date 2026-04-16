@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
+    "start:backend": "node backend-rora.js",
     "start:webhook": "tsx server.js"
   },
   "dependencies": {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
   Plus, 
@@ -16,7 +16,13 @@ import {
   Type
 } from 'lucide-react';
 
-const contentItems = [
+import { NewContentModal } from '../components/content/NewContentModal';
+import { AIStrategy } from '../components/content/AIStrategy';
+import { AIGeneratorModal } from '../components/content/AIGeneratorModal';
+import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+
+const initialContentItems = [
   { 
     id: 1, 
     title: 'Villa Marítima - Drone View', 
@@ -57,14 +63,71 @@ function cn(...inputs: ClassValue[]) {
 }
 
 export const Content: React.FC = () => {
+  const [contentItems, setContentItems] = useState<any[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAIGenModalOpen, setIsAIGenModalOpen] = useState(false);
+
+  useEffect(() => {
+    const q = query(collection(db, 'contenido-programado'), orderBy('timestamp', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (snapshot.empty) {
+        setContentItems(initialContentItems);
+      } else {
+        const items = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data().datos_completos,
+          title: doc.data().titulo,
+          platform: doc.data().plataforma,
+          date: doc.data().fecha,
+          status: doc.data().estado
+        }));
+        setContentItems(items);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleAddContent = async (newContentData: any) => {
+    try {
+      await addDoc(collection(db, 'contenido-programado'), {
+        titulo: newContentData.title,
+        plataforma: newContentData.platform,
+        fecha: newContentData.date,
+        estado: newContentData.status,
+        timestamp: serverTimestamp(),
+        datos_completos: newContentData
+      });
+    } catch (err) {
+      console.error("Error al guardar en Firebase:", err);
+    }
+  };
+
+  const handleApplySuggestion = () => {
+    const suggestionContent = {
+      title: 'Villa Marítima — Reel Sugerido',
+      platform: 'Instagram',
+      type: 'Video',
+      status: 'Programado',
+      date: 'Viernes', // As per prompt text "próximo viernes"
+      time: '19:00',
+      image: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&q=80&w=400'
+    };
+    handleAddContent(suggestionContent);
+  };
+
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 relative">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Contenido</h1>
           <p className="text-obsidian-muted mt-1 text-sm md:text-base">Planifica y gestiona tu presencia en redes sociales.</p>
         </div>
-        <button className="flex items-center justify-center gap-2 px-4 py-2 bg-obsidian-primary text-obsidian-bg rounded-xl text-sm font-bold hover:opacity-90 transition-opacity">
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-obsidian-primary text-obsidian-bg rounded-xl text-sm font-bold hover:opacity-90 transition-opacity"
+        >
           <Plus className="w-4 h-4" />
           Nuevo Contenido
         </button>
@@ -141,7 +204,10 @@ export const Content: React.FC = () => {
                 </div>
               </div>
             ))}
-            <button className="glass-card border-dashed border-2 border-obsidian-border flex flex-col items-center justify-center gap-3 p-8 hover:bg-white/5 transition-colors group">
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="glass-card border-dashed border-2 border-obsidian-border flex flex-col items-center justify-center gap-3 p-8 hover:bg-white/5 transition-colors group"
+            >
               <div className="w-12 h-12 rounded-full bg-obsidian-primary/10 text-obsidian-primary flex items-center justify-center group-hover:scale-110 transition-transform">
                 <Plus className="w-6 h-6" />
               </div>
@@ -151,63 +217,24 @@ export const Content: React.FC = () => {
         </div>
 
         <div className="space-y-6">
-          <div className="glass-card p-6">
-            <h3 className="font-bold text-lg mb-6">AI Content Strategy</h3>
-            <div className="space-y-4">
-              <div className="p-4 bg-obsidian-primary/5 border border-obsidian-primary/20 rounded-2xl space-y-3">
-                <div className="flex items-center gap-2 text-obsidian-primary">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span className="text-xs font-bold uppercase tracking-widest">Recomendación AI</span>
-                </div>
-                <p className="text-sm leading-relaxed">
-                  "El engagement con videos de drones ha subido un 40%. Te sugiero programar un Reel adicional de Villa Marítima para este viernes a las 19:00."
-                </p>
-                <button className="w-full py-2 bg-obsidian-primary text-obsidian-bg text-xs font-bold rounded-xl hover:opacity-90 transition-opacity">
-                  Aplicar sugerencia
-                </button>
-              </div>
-
-              <div className="p-4 bg-white/5 border border-white/5 rounded-2xl space-y-3">
-                <div className="flex items-center gap-2 text-amber-500">
-                  <AlertCircle className="w-4 h-4" />
-                  <span className="text-xs font-bold uppercase tracking-widest">Alerta de Contenido</span>
-                </div>
-                <p className="text-sm leading-relaxed text-obsidian-muted">
-                  "Faltan imágenes de alta resolución para el artículo de LinkedIn de mañana. ¿Quieres que las genere con IA?"
-                </p>
-                <button className="w-full py-2 bg-white/10 text-white text-xs font-bold rounded-xl hover:bg-white/20 transition-colors">
-                  Generar con IA
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="glass-card p-6">
-            <h3 className="font-bold text-lg mb-6">Canales Conectados</h3>
-            <div className="space-y-4">
-              {[
-                { name: 'Instagram Business', icon: Instagram, status: 'Conectado' },
-                { name: 'Facebook Page', icon: Facebook, status: 'Conectado' },
-                { name: 'LinkedIn Company', icon: Linkedin, status: 'Conectado' },
-                { name: 'Twitter / X', icon: Twitter, status: 'Desconectado' },
-              ].map((channel) => (
-                <div key={channel.name} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
-                  <div className="flex items-center gap-3">
-                    <channel.icon className="w-4 h-4 text-obsidian-muted" />
-                    <span className="text-sm font-medium">{channel.name}</span>
-                  </div>
-                  <span className={cn(
-                    "text-[10px] font-bold uppercase tracking-wider",
-                    channel.status === 'Conectado' ? "text-emerald-500" : "text-obsidian-muted"
-                  )}>
-                    {channel.status}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <AIStrategy 
+            onApplySuggestion={handleApplySuggestion}
+            onGenerateAI={() => setIsAIGenModalOpen(true)}
+          />
         </div>
       </div>
+
+      <NewContentModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onAddContent={handleAddContent}
+      />
+
+      <AIGeneratorModal
+        isOpen={isAIGenModalOpen}
+        onClose={() => setIsAIGenModalOpen(false)}
+        onApprove={handleAddContent}
+      />
     </div>
   );
 };

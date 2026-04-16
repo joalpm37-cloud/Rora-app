@@ -2,7 +2,8 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, 
-  MessageSquare, 
+  MessageSquare,
+  MessageCircle, 
   Users, 
   Calendar, 
   Home, 
@@ -23,7 +24,7 @@ function cn(...inputs: ClassValue[]) {
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Panel de control', path: '/' },
-  { icon: MessageSquare, label: 'Chats', path: '/chats' },
+  { icon: MessageSquare, label: 'Mensajes', path: '/chats' },
   { icon: Users, label: 'Contactos', path: '/leads' },
   { icon: Calendar, label: 'Calendario', path: '/calendar' },
   { icon: Home, label: 'Propiedades', path: '/properties' },

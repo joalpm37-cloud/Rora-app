@@ -1,34 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Plus, 
-  MapPin, 
-  Clock, 
+import {
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  MapPin,
+  Clock,
   User,
   Filter
 } from 'lucide-react';
-import { 
-  format, 
-  addMonths, 
-  subMonths, 
-  startOfMonth, 
-  endOfMonth, 
-  startOfWeek, 
-  endOfWeek, 
-  isSameMonth, 
-  isSameDay, 
-  eachDayOfInterval 
+import {
+  format,
+  addMonths,
+  subMonths,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  isSameMonth,
+  isSameDay,
+  eachDayOfInterval
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { onSnapshot, query, where, orderBy, Timestamp } from 'firebase/firestore';
+import { onSnapshot, query, where, orderBy, Timestamp, collection, getDocs, addDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { collections } from '../lib/collections';
 import { CalendarEvent } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { handleFirestoreError, OperationType } from '../lib/error-handling';
 import { NewEventModal } from '../components/calendar/NewEventModal';
+import { obtenerSlotsCalendario } from '../../rora/utils/ghl-api';
+import { RefreshCw } from 'lucide-react';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -39,7 +42,9 @@ export const Calendar: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [isNewEventModalOpen, setIsNewEventModalOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
@@ -54,7 +59,39 @@ export const Calendar: React.FC = () => {
   useEffect(() => {
     if (!user) return;
 
-    // Fetch events for the user and filter in memory to avoid composite index requirement
+    // Auto-sync GHL Slots
+    const syncGhl = async () => {
+      setIsSyncing(true);
+      try {
+        const slots = await obtenerSlotsCalendario();
+        for (const slot of slots) {
+          // Verificar si ya existe por ghl_event_id
+          const q = query(collection(db, 'calendarEvents'), where('ghl_event_id', '==', slot.id));
+          const snap = await getDocs(q);
+          
+          if (snap.empty) {
+            await addDoc(collection(db, 'calendarEvents'), {
+              agencyId: user.agencyId || 'default-agency',
+              agentId: user.uid,
+              title: slot.title || 'Evento GHL',
+              date: Timestamp.fromDate(new Date(slot.startTime)),
+              time: format(new Date(slot.startTime), 'HH:mm'),
+              type: "visit",
+              ghl_event_id: slot.id,
+              sincronizado: true,
+              createdAt: Timestamp.now()
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Error syncing GHL slots:", err);
+      } finally {
+        setIsSyncing(false);
+      }
+    };
+    syncGhl();
+
+    // Fetch events for the user
     const q = query(
       collections.calendarEvents,
       where('agentId', '==', user.uid)
@@ -65,20 +102,20 @@ export const Calendar: React.FC = () => {
         id: doc.id,
         ...doc.data()
       })) as CalendarEvent[];
-      
+
       // Filter by date range in memory
       const filteredEvents = fetchedEvents.filter(event => {
         const eventDate = event.date instanceof Timestamp ? event.date.toDate() : new Date(event.date);
         return eventDate >= startDate && eventDate <= endDate;
       });
-      
+
       // Sort in memory
       filteredEvents.sort((a, b) => {
         const timeA = a.date instanceof Timestamp ? a.date.toMillis() : new Date(a.date).getTime();
         const timeB = b.date instanceof Timestamp ? b.date.toMillis() : new Date(b.date).getTime();
         return timeA - timeB;
       });
-      
+
       setEvents(filteredEvents);
     }, (error) => {
       try {
@@ -112,8 +149,11 @@ export const Calendar: React.FC = () => {
             <Filter className="w-4 h-4" />
             Filtros
           </button>
-          <button 
-            onClick={() => setIsNewEventModalOpen(true)}
+          <button
+            onClick={() => {
+              setEditingEvent(null);
+              setIsNewEventModalOpen(true);
+            }}
             className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-obsidian-primary text-obsidian-bg rounded-xl text-sm font-bold hover:opacity-90 transition-opacity"
           >
             <Plus className="w-4 h-4" />
@@ -144,50 +184,51 @@ export const Calendar: React.FC = () => {
 
           <div className="min-w-[600px]">
             <div className="grid grid-cols-7 gap-px bg-obsidian-border rounded-xl overflow-hidden border border-obsidian-border">
-            {['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'].map((day) => (
-              <div key={day} className="bg-obsidian-card p-4 text-center text-xs font-bold uppercase tracking-widest text-obsidian-muted">
-                {day}
-              </div>
-            ))}
-            {calendarDays.map((day, i) => {
-              const dayEvents = getEventsForDay(day);
-              const isCurrentMonth = isSameMonth(day, monthStart);
-              const isToday = isSameDay(day, new Date());
-              const isSelected = isSameDay(day, selectedDate);
-
-              return (
-                <div
-                  key={i}
-                  onClick={() => setSelectedDate(day)}
-                  className={cn(
-                    "bg-obsidian-card min-h-[100px] p-2 cursor-pointer transition-all hover:bg-white/5 relative group",
-                    !isCurrentMonth && "opacity-30",
-                    isSelected && "bg-obsidian-primary/5 ring-1 ring-inset ring-obsidian-primary/30"
-                  )}
-                >
-                  <div className="flex justify-between items-start">
-                    <span className={cn(
-                      "text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full",
-                      isToday && "bg-obsidian-primary text-obsidian-bg font-bold",
-                      isSelected && !isToday && "text-obsidian-primary"
-                    )}>
-                      {format(day, 'd')}
-                    </span>
-                  </div>
-                  <div className="mt-2 space-y-1">
-                    {dayEvents.map((event) => (
-                      <div 
-                        key={event.id} 
-                        className="text-[10px] p-1.5 bg-obsidian-primary/10 text-obsidian-primary rounded-md truncate font-bold border border-obsidian-primary/20"
-                      >
-                        {event.title}
-                      </div>
-                    ))}
-                  </div>
+              {['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'].map((day) => (
+                <div key={day} className="bg-obsidian-card p-4 text-center text-xs font-bold uppercase tracking-widest text-obsidian-muted">
+                  {day}
                 </div>
-              );
-            })}
-          </div>
+              ))}
+              {calendarDays.map((day, i) => {
+                const dayEvents = getEventsForDay(day);
+                const isCurrentMonth = isSameMonth(day, monthStart);
+                const isToday = isSameDay(day, new Date());
+                const isSelected = isSameDay(day, selectedDate);
+
+                return (
+                  <div
+                    key={i}
+                    onClick={() => setSelectedDate(day)}
+                    className={cn(
+                      "bg-obsidian-card min-h-[100px] p-2 cursor-pointer transition-all hover:bg-white/5 relative group",
+                      !isCurrentMonth && "opacity-30",
+                      isSelected && "bg-obsidian-primary/5 ring-1 ring-inset ring-obsidian-primary/30"
+                    )}
+                  >
+                    <div className="flex justify-between items-start">
+                      <span className={cn(
+                        "text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full",
+                        isToday && "bg-obsidian-primary text-obsidian-bg font-bold",
+                        isSelected && !isToday && "text-obsidian-primary"
+                      )}>
+                        {format(day, 'd')}
+                      </span>
+                    </div>
+                    <div className="mt-2 space-y-1">
+                      {dayEvents.map((event) => (
+                        <div
+                          key={event.id}
+                          className="text-[10px] p-1.5 bg-obsidian-primary/10 text-obsidian-primary rounded-md truncate font-bold border border-obsidian-primary/20 flex items-center gap-1"
+                        >
+                          {event.ghl_event_id && <RefreshCw className="w-2 h-2 shrink-0" />}
+                          <span className="truncate">{event.title}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -198,8 +239,11 @@ export const Calendar: React.FC = () => {
               <h3 className="font-bold text-lg">
                 Eventos para el {format(selectedDate, "d 'de' MMMM", { locale: es })}
               </h3>
-              <button 
-                onClick={() => setIsNewEventModalOpen(true)}
+              <button
+                onClick={() => {
+                  setEditingEvent(null);
+                  setIsNewEventModalOpen(true);
+                }}
                 className="p-1 hover:bg-white/10 rounded-md transition-colors text-obsidian-primary"
               >
                 <Plus className="w-5 h-5" />
@@ -208,9 +252,23 @@ export const Calendar: React.FC = () => {
             <div className="space-y-4">
               {selectedEvents.length > 0 ? (
                 selectedEvents.map((event) => (
-                  <div key={event.id} className="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-3">
+                  <div 
+                    key={event.id} 
+                    className="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-3 cursor-pointer hover:bg-white/10 transition-colors"
+                    onClick={() => {
+                      setEditingEvent(event);
+                      setIsNewEventModalOpen(true);
+                    }}
+                  >
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold text-obsidian-primary">{event.title}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-obsidian-primary">{event.title}</span>
+                        {event.ghl_event_id && (
+                          <span className="px-1 py-0.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded text-[8px] font-bold flex items-center gap-1">
+                            <RefreshCw className="w-2 h-2" /> GHL
+                          </span>
+                        )}
+                      </div>
                       <span className="text-[10px] font-bold text-obsidian-muted uppercase tracking-widest">{event.time}</span>
                     </div>
                     <div className="space-y-2">
@@ -268,9 +326,13 @@ export const Calendar: React.FC = () => {
       </div>
 
       {isNewEventModalOpen && (
-        <NewEventModal 
-          onClose={() => setIsNewEventModalOpen(false)} 
+        <NewEventModal
+          onClose={() => {
+            setIsNewEventModalOpen(false);
+            setEditingEvent(null);
+          }}
           selectedDate={selectedDate}
+          event={editingEvent}
         />
       )}
     </div>

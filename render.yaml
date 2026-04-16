@@ -2,9 +2,9 @@ services:
   - type: web
     name: rora-backend
     runtime: node
-    rootDirectory: server
+    rootDirectory: .
     buildCommand: npm install
-    startCommand: node index.js
+    startCommand: npm run start:backend
     plan: free
     region: ohio # US-East (US IP as requested)
     envVars:

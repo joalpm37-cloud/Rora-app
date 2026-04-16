@@ -7,6 +7,7 @@ import { storage } from '../../lib/firebase';
 import { Property, PropertyType, PropertyOperation, PropertyStatus } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import { handleFirestoreError, OperationType } from '../../lib/error-handling';
+import { sendEventToMake } from '../../services/makeIntegration';
 
 interface PropertyFormProps {
   property?: Property | null;
@@ -73,9 +74,29 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ property, onClose })
           ...formData,
           coverPhoto: finalCoverPhoto
         });
+        
+        await sendEventToMake({
+          type: "property.updated",
+          payload: {
+            propertyId: property.id,
+            agencyId: user.agencyId || 'default-agency',
+            agentId: user.uid,
+            type: formData.type,
+            operation: formData.operation,
+            address: formData.address,
+            zone: formData.zone,
+            price: formData.price,
+            sqm: formData.sqm,
+            bedrooms: formData.bedrooms,
+            bathrooms: formData.bathrooms,
+            status: formData.status,
+            description: formData.description,
+            photos: [finalCoverPhoto]
+          }
+        });
       } else {
         // Create
-        await addDoc(collections.properties, {
+        const docRef = await addDoc(collections.properties, {
           ...formData,
           coverPhoto: finalCoverPhoto,
           agencyId: user.agencyId || 'default-agency',
@@ -83,6 +104,26 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ property, onClose })
           photos: [finalCoverPhoto],
           matchedLeads: [],
           createdAt: Timestamp.now(),
+        });
+
+        await sendEventToMake({
+          type: "property.created",
+          payload: {
+            propertyId: docRef.id,
+            agencyId: user.agencyId || 'default-agency',
+            agentId: user.uid,
+            type: formData.type,
+            operation: formData.operation,
+            address: formData.address,
+            zone: formData.zone,
+            price: formData.price,
+            sqm: formData.sqm,
+            bedrooms: formData.bedrooms,
+            bathrooms: formData.bathrooms,
+            status: formData.status,
+            description: formData.description,
+            photos: [finalCoverPhoto]
+          }
         });
       }
       onClose();

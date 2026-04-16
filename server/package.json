@@ -1,0 +1,16 @@
+{
+  "name": "rora-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "RORA - AI Orchestrator Backend",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "firebase": "^12.11.0"
+  }
+}
