@@ -18,14 +18,14 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// TEST: Probar el agente Managed (Uso manual del ID generado)
+// TEST: Probar el agente Managed (ID Proporcionado por el Usuario)
 app.post('/api/rora/agents/test', async (req, res) => {
   const { mensaje } = req.body;
-  const AGENT_ID = 'agent_011Ca84qQ9mUCkULb4W6h9zr'; // El ID que acabamos de generar
+  const AGENT_ID = 'agent_011Ca82NXWoe3hWykRQCd6bv'; 
 
   try {
     console.log(`🤖 Probando Agente Managed (${AGENT_ID})...`);
-    const respuesta = await llamarAgenteManaged(AGENT_ID, mensaje || 'Hola RORA, ¿estás lista para trabajar?');
+    const respuesta = await llamarAgenteManaged(AGENT_ID, mensaje || 'Hola RORA, preséntate como Directora de Orquesta.');
     res.json({ success: true, respuesta });
   } catch (error) {
     console.error('Error en test de agente:', error);
@@ -35,7 +35,7 @@ app.post('/api/rora/agents/test', async (req, res) => {
 
 // Health check / Test endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'RORA Backend is running (V2.3.1 - Test Endpoint Live)' });
+  res.json({ status: 'ok', message: 'RORA Backend is running (V2.4 - Managed Orchestrator Live)' });
 });
 
 // NUEVO: Endpoint para inicializar Managed Agents

@@ -84,35 +84,95 @@ export async function crearAgenteManaged(nombre, systemPrompt) {
   }
 }
 
-// NUEVA FUNCIÓN: Llamar a un Managed Agent por ID
-export async function llamarAgenteManaged(agentId, mensajeUsuario, historial = []) {
+// NUEVA FUNCIÓN: Llamar a un Managed Agent (Protocolo Sesión -> Evento -> Polling)
+export async function llamarAgenteManaged(agentId, mensajeUsuario) {
     try {
-      const response = await fetch(`https://api.anthropic.com/v1/agents/${agentId}/messages`, {
+      console.log(`🚀 Iniciando comunicación con Agente: ${agentId}`);
+      
+      const commonHeaders = {
+        'x-api-key': getEnv('ANTHROPIC_API_KEY'),
+        'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'managed-agents-2026-04-01',
+        'content-type': 'application/json'
+      };
+
+      // 1. Crear Sesión
+      const sessionResponse = await fetch('https://api.anthropic.com/v1/sessions', {
         method: 'POST',
-        headers: {
-          'x-api-key': getEnv('ANTHROPIC_API_KEY'),
-          'anthropic-version': '2023-06-01',
-          'anthropic-beta': 'managed-agents-2026-04-01',
-          'content-type': 'application/json'
-        },
-        body: JSON.stringify({
-          max_tokens: 1024,
-          messages: [
-            ...historial,
-            { role: 'user', content: mensajeUsuario }
-          ]
+        headers: commonHeaders,
+        body: JSON.stringify({ 
+          agent_id: agentId,
+          metadata: { context: 'RORA_TEST_SESSION' }
         })
       });
-  
-      if (!response.ok) {
-          const error = await response.text();
-          throw new Error(`Error llamando al agente: ${response.status} - ${error}`);
+
+      if (!sessionResponse.ok) {
+        const err = await sessionResponse.text();
+        throw new Error(`Fallo al crear sesión: ${sessionResponse.status} - ${err}`);
       }
-  
-      const data = await response.json();
-      return data.content[0].text;
+
+      const session = await sessionResponse.json();
+      const sessionId = session.id;
+      console.log(`📂 Sesión creada: ${sessionId}`);
+
+      // 2. Enviar Mensaje (Evento)
+      const eventResponse = await fetch(`https://api.anthropic.com/v1/sessions/${sessionId}/events`, {
+        method: 'POST',
+        headers: commonHeaders,
+        body: JSON.stringify({
+          event: {
+            type: 'user.message',
+            content: [{ type: 'text', text: mensajeUsuario }]
+          }
+        })
+      });
+
+      if (!eventResponse.ok) {
+        const err = await eventResponse.text();
+        throw new Error(`Fallo al enviar mensaje: ${eventResponse.status} - ${err}`);
+      }
+
+      // 3. Polling de Respuesta
+      let attempts = 0;
+      const MAX_ATTEMPTS = 15;
+      
+      console.log('⏳ Esperando respuesta de Rora (Polling)...');
+      
+      while (attempts < MAX_ATTEMPTS) {
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Esperar 2 segundos entre polls
+        
+        const pollResponse = await fetch(`https://api.anthropic.com/v1/sessions/${sessionId}/events`, {
+          method: 'GET',
+          headers: commonHeaders
+        });
+
+        if (pollResponse.ok) {
+          const pollData = await pollResponse.json();
+          // Los eventos suelen venir en un array 'data' o similar
+          const events = pollData.data || pollData;
+          
+          if (Array.isArray(events)) {
+            // Buscamos el último evento de tipo agent.message o similar que contenga texto
+            const lastResponse = events.reverse().find(e =>  e.type === 'agent.message' || e.type === 'text');
+            if (lastResponse) {
+              // El formato exacto depende de la beta, usualmente e.content[0].text o e.text
+              const text = lastResponse.text || (lastResponse.content && lastResponse.content[0].text);
+              if (text) {
+                console.log('✅ Respuesta recibida de Rora.');
+                return text;
+              }
+            }
+          }
+        }
+        
+        attempts++;
+        console.log(`...intento ${attempts}/${MAX_ATTEMPTS}`);
+      }
+
+      throw new Error('Tiempo de espera agotado esperando respuesta del Agente Managed.');
+
     } catch (error) {
-      console.error('Error en llamarAgenteManaged:', error);
+      console.error('Error en llamarAgenteManaged (Bridge):', error);
       throw error;
     }
   }
