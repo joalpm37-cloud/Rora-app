@@ -35,7 +35,7 @@ app.post('/api/rora/agents/test', async (req, res) => {
 
 // Health check / Test endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'RORA Backend is running (V2.3 - Resilient Activation)' });
+  res.json({ status: 'ok', message: 'RORA Backend is running (V2.3.1 - Test Endpoint Live)' });
 });
 
 // NUEVO: Endpoint para inicializar Managed Agents
