@@ -5,7 +5,7 @@ import { procesarMensajeRora } from './rora/agentes/rora-central.js';
 import { crearContactoGHL } from './rora/utils/ghl-api.js';
 import { db } from './lib/firebase.js';
 import { collection, addDoc, serverTimestamp, setDoc, doc } from 'firebase/firestore';
-import { crearAgenteManaged } from './rora/utils/claude-api.js';
+import { crearAgenteManaged, llamarAgenteManaged } from './rora/utils/claude-api.js';
 import SYSTEM_PROMPT_RORA from './rora/prompts/system-prompt-rora.js';
 
 dotenv.config();
