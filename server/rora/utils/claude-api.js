@@ -85,7 +85,7 @@ export async function crearAgenteManaged(nombre, systemPrompt) {
 }
 
 // NUEVA FUNCIÓN: Llamar a un Managed Agent (Protocolo Sesión -> Evento -> Polling)
-export async function llamarAgenteManaged(agentId, mensajeUsuario) {
+export async function llamarAgenteManaged(agentId, mensajeUsuario, environmentId) {
     try {
       console.log(`🚀 Iniciando comunicación con Agente: ${agentId}`);
       
@@ -102,6 +102,7 @@ export async function llamarAgenteManaged(agentId, mensajeUsuario) {
         headers: commonHeaders,
         body: JSON.stringify({ 
           agent: agentId,
+          environment_id: environmentId,
           metadata: { context: 'RORA_TEST_SESSION' }
         })
       });

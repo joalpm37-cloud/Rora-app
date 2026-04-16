@@ -24,18 +24,49 @@ app.post('/api/rora/agents/test', async (req, res) => {
   const AGENT_ID = 'agent_011Ca82NXWoe3hWykRQCd6bv'; 
 
   try {
-    console.log(`🤖 Probando Agente Managed (${AGENT_ID})...`);
-    const respuesta = await llamarAgenteManaged(AGENT_ID, mensaje || 'Hola RORA, preséntate como Directora de Orquesta.');
-    res.json({ success: true, respuesta });
+    console.log(`🤖 Iniciando diagnóstico de Agente Managed (${AGENT_ID})...`);
+    
+    // Paso 1: Crear o definir el entorno ( Ohio context)
+    const commonHeaders = {
+      'x-api-key': process.env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+      'anthropic-beta': 'managed-agents-2026-04-01',
+      'Content-Type': 'application/json'
+    };
+
+    console.log('🌐 Creando entorno de ejecución...');
+    const envResp = await fetch('https://api.anthropic.com/v1/environments', {
+      method: 'POST',
+      headers: commonHeaders,
+      body: JSON.stringify({
+        name: "Rora Orchestrator Sandbox",
+        config: { type: "cloud", networking: { type: "unrestricted" } }
+      })
+    });
+
+    const envData = await envResp.json();
+    if (!envResp.ok) throw new Error(`Error en entorno: ${JSON.stringify(envData)}`);
+    const envId = envData.id;
+    console.log(`✅ Entorno temporal listo: ${envId}`);
+
+    // Paso 2: Usar el puente de sesiones para hablar con Rora
+    const respuesta = await llamarAgenteManaged(AGENT_ID, mensaje || 'Hola RORA, preséntate como Directora de Orquesta.', envId);
+    
+    res.json({ 
+      success: true, 
+      agent_id: AGENT_ID,
+      environment_id: envId,
+      respuesta 
+    });
   } catch (error) {
-    console.error('Error en test de agente:', error);
+    console.error('Error en orquestación de prueba:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
 // Health check / Test endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'RORA Backend is running (V2.4.1 - Agent Parameter Fixed)' });
+  res.json({ status: 'ok', message: 'RORA Backend is running (V2.5 - Full Orchestration Live)' });
 });
 
 // NUEVO: Endpoint para inicializar Managed Agents
