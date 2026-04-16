@@ -35,7 +35,7 @@ app.post('/api/rora/agents/test', async (req, res) => {
 
 // Health check / Test endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'RORA Backend is running (V2.4 - Managed Orchestrator Live)' });
+  res.json({ status: 'ok', message: 'RORA Backend is running (V2.4.1 - Agent Parameter Fixed)' });
 });
 
 // NUEVO: Endpoint para inicializar Managed Agents (Duplicado por redundancia)
