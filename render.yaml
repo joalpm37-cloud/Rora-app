@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: rora-backend
+    runtime: docker
+    dockerContext: server
+    dockerfilePath: Dockerfile
+    plan: free
+    region: ohio # US-East (US IP as requested)
+    envVars:
+      - key: PORT
+        value: 3001
+      - key: ANTHROPIC_API_KEY
+        sync: false # Set in Render Dashboard
+      - key: GHL_PIT_TOKEN
+        sync: false # Set in Render Dashboard
+      - key: GHL_LOCATION_ID
+        sync: false # Set in Render Dashboard
+      - key: FIREBASE_CONFIG
+        sync: false # (Optional) If you want to externalize config

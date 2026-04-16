@@ -1,0 +1,31 @@
+{
+  "RespuestaGHL": {
+    "success": false,
+    "status": 401,
+    "data": {
+      "message": "This location is not accessible from this token!",
+      "error": "Unauthorized",
+      "statusCode": 401
+    },
+    "mcp_trace_id": "2f2b3a68-37b9-4794-9984-9a1b43859fc9",
+    "tool": {
+      "id": "7d340d06-049f-44cc-abfd-e685eda4796f",
+      "name": "social-media-posting_create-post",
+      "source": "default",
+      "team": "social-media-posting"
+    },
+    "mcpWrapper": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"success\": false,\n  \"status\": 401,\n  \"data\": {\n    \"message\": \"This location is not accessible from this token!\",\n    \"error\": \"Unauthorized\",\n    \"statusCode\": 401\n  },\n  \"mcp_trace_id\": \"2f2b3a68-37b9-4794-9984-9a1b43859fc9\",\n  \"tool\": {\n    \"id\": \"7d340d06-049f-44cc-abfd-e685eda4796f\",\n    \"name\": \"social-media-posting_create-post\",\n    \"source\": \"default\",\n    \"team\": \"social-media-posting\"\n  }\n}"
+          }
+        ],
+        "isError": true
+      },
+      "jsonrpc": "2.0",
+      "id": 1776061111216
+    }
+  }
+}

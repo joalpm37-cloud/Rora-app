@@ -1,0 +1,49 @@
+{
+  "PruebaA": [],
+  "PruebaB": {
+    "existia": true,
+    "contacto": {
+      "id": "4hLfPCETP496H712gxdG"
+    }
+  },
+  "PruebaC": {
+    "existia": true,
+    "contacto": {
+      "id": "vuwgCs6HicGcJ59MSgaO",
+      "locationId": "Da4xumnCtfy4YV1czMZd",
+      "contactName": "maria garcía",
+      "firstName": "maria garcía",
+      "lastName": null,
+      "firstNameRaw": "Maria García",
+      "lastNameRaw": null,
+      "companyName": null,
+      "email": "maria.garcia.rora@test.com",
+      "phone": "+349998887777",
+      "dnd": false,
+      "dndSettings": {},
+      "type": "lead",
+      "source": null,
+      "assignedTo": null,
+      "city": null,
+      "state": null,
+      "postalCode": null,
+      "address1": null,
+      "dateAdded": "2026-04-13T05:55:35.834Z",
+      "dateUpdated": "2026-04-13T05:55:35.834Z",
+      "dateOfBirth": null,
+      "businessId": null,
+      "tags": [],
+      "followers": [],
+      "country": "ES",
+      "website": null,
+      "timezone": null,
+      "profilePhoto": null,
+      "additionalEmails": [],
+      "customFields": [],
+      "startAfter": [
+        1776059735834,
+        "vuwgCs6HicGcJ59MSgaO"
+      ]
+    }
+  }
+}

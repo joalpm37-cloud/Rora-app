@@ -1,0 +1,88 @@
+{
+  "Prueba1": {
+    "success": true,
+    "status": 200,
+    "data": {
+      "success": true,
+      "statusCode": 200,
+      "message": "Fetched Accounts",
+      "results": {
+        "accounts": [
+          {
+            "id": "69c5bc026ad22b068f3bc8b7_Da4xumnCtfy4YV1czMZd_1893747444189685_page",
+            "oauthId": "69c5bc026ad22b068f3bc8b7",
+            "profileId": "69c5bc07b79b8e38a9491045",
+            "name": "Joseph Peña",
+            "avatar": "https://storage.googleapis.com/highlevel-backend.appspot.com/social-media-posting/profile-picture/facebook/pages/1893747444189685.jpg",
+            "platform": "facebook",
+            "type": "page",
+            "expire": "2026-05-25T23:01:42.533Z",
+            "isExpired": false,
+            "originId": "1893747444189685",
+            "deleted": false,
+            "updatedAt": "2026-03-26T23:06:55.072Z",
+            "hasStatisticsPermissions": true,
+            "buildingStatistics": false,
+            "syncPosts": false
+          },
+          {
+            "id": "69c55ddc924bc4305ae74e0e_Da4xumnCtfy4YV1czMZd_17841405486816673",
+            "oauthId": "69c55ddc924bc4305ae74e0e",
+            "profileId": "69c55de19a74181b71916761",
+            "name": "joseph.rora",
+            "avatar": "https://storage.googleapis.com/highlevel-backend.appspot.com/social-media-posting/profile-picture/instagram/profile/17841405486816673.jpg",
+            "platform": "instagram",
+            "type": "profile",
+            "expire": "2026-05-25T16:20:00.734Z",
+            "isExpired": false,
+            "originId": "17841405486816673",
+            "meta": {
+              "loginType": "instagram"
+            },
+            "deleted": false,
+            "updatedAt": "2026-03-26T16:25:09.787Z",
+            "hasStatisticsPermissions": true,
+            "buildingStatistics": false,
+            "syncPosts": false
+          }
+        ],
+        "groups": []
+      },
+      "traceId": "327ce57b-4a6b-4d52-8a4b-7f265c35d7a3"
+    },
+    "mcp_trace_id": "9e4a9517-4086-4b8a-b417-ad5d3ca780b8",
+    "tool": {
+      "id": "a06ad65b-6abe-43c6-b4a1-748a98a4ed49",
+      "name": "social-media-posting_get-account",
+      "source": "default",
+      "team": "social-media-posting"
+    },
+    "mcpWrapper": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"success\": true,\n  \"status\": 200,\n  \"data\": {\n    \"success\": true,\n    \"statusCode\": 200,\n    \"message\": \"Fetched Accounts\",\n    \"results\": {\n      \"accounts\": [\n        {\n          \"id\": \"69c5bc026ad22b068f3bc8b7_Da4xumnCtfy4YV1czMZd_1893747444189685_page\",\n          \"oauthId\": \"69c5bc026ad22b068f3bc8b7\",\n          \"profileId\": \"69c5bc07b79b8e38a9491045\",\n          \"name\": \"Joseph Peña\",\n          \"avatar\": \"https://storage.googleapis.com/highlevel-backend.appspot.com/social-media-posting/profile-picture/facebook/pages/1893747444189685.jpg\",\n          \"platform\": \"facebook\",\n          \"type\": \"page\",\n          \"expire\": \"2026-05-25T23:01:42.533Z\",\n          \"isExpired\": false,\n          \"originId\": \"1893747444189685\",\n          \"deleted\": false,\n          \"updatedAt\": \"2026-03-26T23:06:55.072Z\",\n          \"hasStatisticsPermissions\": true,\n          \"buildingStatistics\": false,\n          \"syncPosts\": false\n        },\n        {\n          \"id\": \"69c55ddc924bc4305ae74e0e_Da4xumnCtfy4YV1czMZd_17841405486816673\",\n          \"oauthId\": \"69c55ddc924bc4305ae74e0e\",\n          \"profileId\": \"69c55de19a74181b71916761\",\n          \"name\": \"joseph.rora\",\n          \"avatar\": \"https://storage.googleapis.com/highlevel-backend.appspot.com/social-media-posting/profile-picture/instagram/profile/17841405486816673.jpg\",\n          \"platform\": \"instagram\",\n          \"type\": \"profile\",\n          \"expire\": \"2026-05-25T16:20:00.734Z\",\n          \"isExpired\": false,\n          \"originId\": \"17841405486816673\",\n          \"meta\": {\n            \"loginType\": \"instagram\"\n          },\n          \"deleted\": false,\n          \"updatedAt\": \"2026-03-26T16:25:09.787Z\",\n          \"hasStatisticsPermissions\": true,\n          \"buildingStatistics\": false,\n          \"syncPosts\": false\n        }\n      ],\n      \"groups\": []\n    },\n    \"traceId\": \"327ce57b-4a6b-4d52-8a4b-7f265c35d7a3\"\n  },\n  \"mcp_trace_id\": \"9e4a9517-4086-4b8a-b417-ad5d3ca780b8\",\n  \"tool\": {\n    \"id\": \"a06ad65b-6abe-43c6-b4a1-748a98a4ed49\",\n    \"name\": \"social-media-posting_get-account\",\n    \"source\": \"default\",\n    \"team\": \"social-media-posting\"\n  }\n}"
+          }
+        ],
+        "isError": false
+      },
+      "jsonrpc": "2.0",
+      "id": 1776060650482
+    }
+  },
+  "Prueba2": {
+    "guion_60s": "(Gancho visual: Vista aérea desde el dron entrando por la terraza hacia la piscina infinita)\\n¿Te imaginas despertar cada mañana con el Mediterráneo a tus pies?\\n(Recorrido: Cámara flota desde la cocina abierta hacia el salón bañado de luz natural)\\nBienvenido a Villa Marítima, en el corazón de Marbella. Un refugio de lujo donde el diseño moderno se funde con el horizonte.\\n(Características: Detalles de la suite principal y los acabados en piedra natural)\\nCon 4 suites, 3 baños y un inigualable nivel de privacidad, cada rincón está pensado para el máximo confort.\\n(Llamada a la acción: Planos del exterior al atardecer)\\nTu nueva vida te espera. Comenta 'QUIERO VERLA' o envíanos un mensaje directo para agendar una visita privada.",
+    "caption_instagram": "💎 Eleva tu estilo de vida en Marbella.\\n\\nDescubre Villa Marítima, un santuario de diseño moderno donde el lujo y la tranquilidad se encuentran ✨.\\n\\nDetalles de la propiedad:\\n🛏️ 4 Habitaciones de lujo\\n🛁 3 Baños con acabados premium\\n📏 320 m² de diseño excepcional\\n\\npiscina infinita, vistas al mar, domótica completa. Todo esto por 850,000€.\\n\\n¿Deseas conocer más detalles? 📩 Envíanos un DM con la palabra \"LUJO\" o comenta abajo para recibir el dossier completo.\\n\\n#BienesRaicesLujo #InmobiliariaPremium #VidaDeLujo",
+    "caption_facebook": "¿Buscando la propiedad de tus sueños? No busques más.\\n\\nTe presentamos en exclusiva Villa Marítima, estratégicamente ubicado en Marbella. Esta propiedad redefine el concepto de elegancia contemporánea.\\n\\nImagina disfrutar de piscina infinita, vistas al mar, domótica completa. Con una superficie de 320 metros cuadrados, 4 amplias habitaciones y 3 elegantes baños, este hogar está diseñado meticulosamente para quienes aprecian la calidad absoluta, con un valor de 850,000€.\\n\\nNo dejes pasar la oportunidad de invertir en calidad de vida. Contáctanos hoy mismo para concertar tu visita presencial o solicitar nuestro tour virtual detallado. Deja que nuestro equipo se encargue de todo el proceso.\\n\\n🔗 Haz clic en el enlace de nuestra biografía o envíanos un mensaje privado para más información.",
+    "hashtags": [
+      "#RealEstateLujo",
+      "#MarbellaLujo",
+      "#PropiedadesExclusivas",
+      "#MercadoInmobiliarioLujo",
+      "#EstiloDeVidaPremium"
+    ],
+    "horario_recomendado": "Viernes a las 19:00",
+    "titulo_contenido": "Villa Marítima — Reel Sugerido"
+  }
+}
