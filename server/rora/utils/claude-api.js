@@ -83,7 +83,7 @@ async function resolveToolCall(toolName, args) {
   }
 }
 
-// NUEVA FUNCIÓN: Llamar a un Managed Agent con Tool Loop Autónomo
+// NUEVA FUNCIÓN: Llamar a un Managed Agent con Tool Loop Autónomo de Alta Estabilidad
 export async function llamarAgenteManaged(agentId, mensajeUsuario, environmentId, sessionId = null) {
   try {
     console.log(`🚀 Comunicación con Agente: ${agentId} ${sessionId ? '(Sesión Reusada)' : '(Nueva Sesión)'}`);
@@ -99,113 +99,114 @@ export async function llamarAgenteManaged(agentId, mensajeUsuario, environmentId
 
     // 1. Asegurar Sesión con Tools
     if (!activeSessionId) {
-      console.log('🌐 Inicializando sesión con herramientas activas...');
       const sessionResponse = await fetch('https://api.anthropic.com/v1/sessions', {
         method: 'POST',
         headers: commonHeaders,
         body: JSON.stringify({ 
           agent: agentId,
           environment_id: environmentId,
-          tools: GHL_TOOLS, // Pasamos los esquemas de herramientas aquí
-          metadata: { context: 'RORA_ACTIVE_ORCHESTRATOR' }
+          tools: GHL_TOOLS,
+          metadata: { context: 'RORA_STABLE_ORCHESTRATOR' }
         })
       });
 
-      if (!sessionResponse.ok) {
-        const err = await sessionResponse.text();
-        throw new Error(`Fallo al crear sesión: ${sessionResponse.status} - ${err}`);
-      }
-
+      if (!sessionResponse.ok) throw new Error(`Fallo Sesión: ${sessionResponse.status}`);
       const session = await sessionResponse.json();
       activeSessionId = session.id;
-      console.log(`📂 Sesión creada: ${activeSessionId}`);
     }
 
-    // 2. Enviar Mensaje Inicial
-    const eventBody = {
-      events: [{
-        type: 'user.message',
-        content: [{ type: 'text', text: mensajeUsuario, cache_control: { type: "ephemeral" } }]
-      }]
+    // REGISTRO DE PUNTO DE PARTIDA (Para evitar leer eventos viejos)
+    let lastHandledEventIndex = -1;
+    const getNewEvents = async () => {
+        const res = await fetch(`https://api.anthropic.com/v1/sessions/${activeSessionId}/events`, {
+          method: 'GET',
+          headers: commonHeaders
+        });
+        if (!res.ok) return [];
+        const pollData = await res.json();
+        const allEvents = pollData.data || pollData;
+        return Array.isArray(allEvents) ? allEvents : [];
     };
-    
+
+    // 2. Enviar Mensaje Inicial
     const initialSend = await fetch(`https://api.anthropic.com/v1/sessions/${activeSessionId}/events`, {
       method: 'POST',
       headers: commonHeaders,
-      body: JSON.stringify(eventBody)
+      body: JSON.stringify({
+        events: [{
+          type: 'user.message',
+          content: [{ type: 'text', text: mensajeUsuario, cache_control: { type: "ephemeral" } }]
+        }]
+      })
     });
 
     if (!initialSend.ok) {
-      if (initialSend.status === 404 && sessionId) return llamarAgenteManaged(agentId, mensajeUsuario, environmentId, null);
-      throw new Error(`Fallo al enviar mensaje: ${initialSend.status}`);
+      if (initialSend.status === 404 && sessionId) return await llamarAgenteManaged(agentId, mensajeUsuario, environmentId, null);
+      throw new Error(`Fallo Envío: ${initialSend.status}`);
     }
 
-    // 3. BUCLE DE EVENTOS (Tool execution Loop)
+    // 3. BUCLE DE ORQUESTACIÓN (Tool execution Loop)
     let finalReply = null;
     let turnCount = 0;
-    const MAX_TURNS = 5;
+    const MAX_TURNS = 6;
 
     while (!finalReply && turnCount < MAX_TURNS) {
       turnCount++;
-      console.log(`⏳ Bucle de orquestación (Turno ${turnCount})...`);
+      console.log(`⏳ Orquestando (Turno ${turnCount})...`);
       
-      // Esperar eventos (Polling)
-      const pollResponse = await (async () => {
-        let attempts = 0;
-        while (attempts < 10) {
-          await new Promise(r => setTimeout(r, 2000));
-          const res = await fetch(`https://api.anthropic.com/v1/sessions/${activeSessionId}/events`, {
-            method: 'GET',
-            headers: commonHeaders
-          });
-          const pollData = await res.json();
-          const events = pollData.data || pollData;
-          
-          if (Array.isArray(events)) {
-            // Buscamos el último evento relevante del agente
-            const lastAgentEvent = events.reverse().find(e => e.type === 'agent.message' || e.type === 'agent.tool_use');
-            if (lastAgentEvent) return lastAgentEvent;
-          }
-          attempts++;
-        }
-        return null;
-      })();
-
-      if (!pollResponse) throw new Error('Timeout esperando eventos del agente.');
-
-      // Caso A: El agente quiere hablar
-      if (pollResponse.type === 'agent.message') {
-        finalReply = pollResponse.text || (pollResponse.content && pollResponse.content[0].text);
-        console.log('✅ Rora ha respondido.');
-      } 
-      // Caso B: El agente quiere actuar (TOOL USE)
-      else if (pollResponse.type === 'agent.tool_use') {
-        const toolResult = await resolveToolCall(pollResponse.tool_name, pollResponse.input);
+      let nextEvent = null;
+      let attempts = 0;
+      
+      while (attempts < 15 && !nextEvent) {
+        await new Promise(r => setTimeout(r, 2000));
+        const currentEvents = await getNewEvents();
         
-        // Enviar el resultado de la herramienta de vuelta a la sesión
-        console.log('📡 Enviando resultado de herramienta a Rora...');
+        // Buscamos el primer evento del agente que ocurra después de nuestro último índice gestionado
+        // Importante: No usamos .reverse() aquí para procesar en orden cronológico si hay varios
+        for (let i = 0; i < currentEvents.length; i++) {
+          if (i > lastHandledEventIndex) {
+            const e = currentEvents[i];
+            if (e.type === 'agent.message' || e.type === 'agent.tool_use') {
+              nextEvent = e;
+              lastHandledEventIndex = i;
+              break;
+            }
+          } else {
+             // Actualizamos el índice máximo visto para no procesar eventos de usuario previos
+             lastHandledEventIndex = Math.max(lastHandledEventIndex, i);
+          }
+        }
+        attempts++;
+      }
+
+      if (!nextEvent) break;
+
+      if (nextEvent.type === 'agent.message') {
+        finalReply = nextEvent.text || (nextEvent.content && nextEvent.content[0].text);
+      } else if (nextEvent.type === 'agent.tool_use') {
+        const result = await resolveToolCall(nextEvent.tool_name, nextEvent.input);
+        
         await fetch(`https://api.anthropic.com/v1/sessions/${activeSessionId}/events`, {
           method: 'POST',
           headers: commonHeaders,
           body: JSON.stringify({
             events: [{
               type: 'tool_result',
-              tool_use_id: pollResponse.id,
-              content: [{ type: 'text', text: JSON.stringify(toolResult) }]
+              tool_use_id: nextEvent.id,
+              content: [{ type: 'text', text: JSON.stringify(result) }]
             }]
           })
         });
-        // El bucle continuará para obtener la siguiente respuesta del agente
       }
     }
 
     return {
-      reply: finalReply || "Rora está procesando el resultado. Por favor espera un momento.",
+      reply: finalReply || "Rora ha completado la tarea en segundo plano.",
       sessionId: activeSessionId
     };
 
   } catch (error) {
-    console.error('Error en llamarAgenteManaged (Active Loop):', error);
+    console.error('Error Stability Loop:', error);
     throw error;
   }
 }
