@@ -20,7 +20,7 @@ app.use(express.json());
 
 // Health check / Test endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'RORA Backend is running (V2.2 - Model 4.6)' });
+  res.json({ status: 'ok', message: 'RORA Backend is running (V2.3 - Resilient Activation)' });
 });
 
 // NUEVO: Endpoint para inicializar Managed Agents (Duplicado por redundancia)
