@@ -109,20 +109,63 @@ app.post('/api/rora/agents/setup', async (req, res) => {
   }
 });
 
-// POST /api/rora/chat - Orquestador principal
+// Cache de entorno para alta velocidad y bajo costo
+let GLOBAL_ENVIRONMENT_ID = null;
+
+// POST /api/rora/chat - Orquestador principal (Managed Agent)
 app.post('/api/rora/chat', async (req, res) => {
-  const { mensaje, historial } = req.body;
-  
+  const { mensaje, sessionId } = req.body;
+  const AGENT_ID = 'agent_011Ca82NXWoe3hWykRQCd6bv'; 
+
   if (!mensaje) {
     return res.status(400).json({ error: 'Mensaje es requerido' });
   }
 
   try {
-    const respuesta = await procesarMensajeRora(mensaje, historial || []);
-    res.json(respuesta);
+    // 1. Asegurar entorno (Ohio Context)
+    if (!GLOBAL_ENVIRONMENT_ID) {
+      console.log('🌐 Inicializando entorno global de RORA (System)...');
+      const commonHeaders = {
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'managed-agents-2026-04-01',
+        'Content-Type': 'application/json'
+      };
+      const envResp = await fetch('https://api.anthropic.com/v1/environments', {
+        method: 'POST',
+        headers: commonHeaders,
+        body: JSON.stringify({
+          name: "Rora Production Sandbox (System)",
+          config: { type: "cloud", networking: { type: "unrestricted" } }
+        })
+      });
+      const envData = await envResp.json();
+      if (envResp.ok) {
+        GLOBAL_ENVIRONMENT_ID = envData.id;
+        console.log(`✅ Entorno global activado (System): ${GLOBAL_ENVIRONMENT_ID}`);
+      } else {
+        throw new Error(`Fallo al crear entorno: ${JSON.stringify(envData)}`);
+      }
+    }
+
+    // 2. Llamada al agente managed con persistencia de sesión
+    const result = await llamarAgenteManaged(AGENT_ID, mensaje, GLOBAL_ENVIRONMENT_ID, sessionId);
+    
+    // Devolvemos la respuesta formateada para el widget
+    res.json({
+      success: true,
+      reply: result.reply,
+      sessionId: result.sessionId,
+      environmentId: GLOBAL_ENVIRONMENT_ID
+    });
+
   } catch (error) {
-    console.error('Error en /api/rora/chat:', error);
-    res.status(500).json({ error: 'Error procesando el mensaje' });
+    console.error('Error en /api/rora/chat (Managed System):', error);
+    res.status(500).json({ 
+      error: 'Error procesando el mensaje',
+      success: false,
+      reply: 'RORA está afinando la orquesta tecnológica. Reintenta en un momento.' 
+    });
   }
 });
 

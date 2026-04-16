@@ -33,13 +33,21 @@ export const FloatingChatWidget: React.FC = () => {
     {
       id: 'greeting',
       sender: 'bot',
-      text: '¡Hola! Soy Rora, tu asistente virtual. Doy directrices e instrucciones. ¿Qué te gustaría que hagamos?'
+      text: '¡Hola! Soy Rora, tu Directora de Orquesta inmobiliaria. ¿Cómo puedo ayudarte a escalar tu negocio hoy?'
     }
   ]);
   const [chatInput, setChatInput] = useState('');
+  const [sessionId, setSessionId] = useState<string | null>(() => localStorage.getItem('rora_session_id'));
+  const [environmentId, setEnvironmentId] = useState<string | null>(() => localStorage.getItem('rora_environment_id'));
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
+
+  // Persistence
+  useEffect(() => {
+    if (sessionId) localStorage.setItem('rora_session_id', sessionId);
+    if (environmentId) localStorage.setItem('rora_environment_id', environmentId);
+  }, [sessionId, environmentId]);
 
   // Initialize Speech Recognition
   useEffect(() => {
@@ -47,9 +55,9 @@ export const FloatingChatWidget: React.FC = () => {
       const SpeechRecognitionConfig = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (SpeechRecognitionConfig) {
         const recognition = new SpeechRecognitionConfig();
-        recognition.continuous = false; // Parar automáticamente al terminar la frase
-        recognition.interimResults = false; // Solo resultados finales para evitar duplicidad extraña
-        recognition.lang = 'es-ES'; // Asumimos español
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'es-ES';
 
         recognition.onresult = (event: any) => {
           const finalTranscript = event.results[0][0].transcript;
@@ -73,7 +81,7 @@ export const FloatingChatWidget: React.FC = () => {
   }, []);
 
   const toggleListening = (e: React.MouseEvent) => {
-    e.preventDefault(); // Prevents form submission
+    e.preventDefault();
     if (!recognitionRef.current) {
       alert("Tu navegador no soporta el dictado por voz automáticamente.");
       return;
@@ -100,41 +108,37 @@ export const FloatingChatWidget: React.FC = () => {
     }
   }, [messages, isOpen, isListening]);
 
-  const sendToWebhook = async (text: string) => {
+  const sendToRora = async (text: string) => {
     try {
-      const payload = { message: text };
-      console.log("Enviando a n8n:", payload);
+      const payload = { 
+        mensaje: text,
+        sessionId: sessionId 
+      };
+      console.log("Enviando a Rora Orchestrator:", payload);
 
-      // Cambiado a webhook-test temporalmente para ayudar a desarrollar en n8n
-      const response = await fetch("https://rora.app.n8n.cloud/webhook-test/rora-chat", {
+      const API_URL = window.location.hostname === 'localhost' 
+        ? 'http://localhost:3001/api/rora/chat' 
+        : 'https://rora-app.onrender.com/api/rora/chat';
+
+      const response = await fetch(API_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
       
-      // Si respondió exitosamente (ej. Status 200)
       if (response.ok) {
-        try {
-          const data = await response.json();
-          // Esperamos el schema: { reply, success, data }
-          if (data && data.success === true && data.reply) {
-            return data.reply;
-          } else {
-            return "Hubo un problema al procesar la solicitud";
-          }
-        } catch (e) {
-          // Cayó en error al decodificar JSON (aunque fue un 200)
-          return "Hubo un problema al procesar la solicitud";
+        const data = await response.json();
+        if (data && data.success === true && data.reply) {
+          // Guardar IDs para persistencia y eficiencia
+          if (data.sessionId) setSessionId(data.sessionId);
+          if (data.environmentId) setEnvironmentId(data.environmentId);
+          return data.reply;
         }
-      } else {
-         // Fallo HTTP (404, 500, etc.)
-         return "Hubo un problema al procesar la solicitud";
       }
+      return "Lo siento, RORA está experimentando una breve pausa técnica. Reintenta en un momento.";
     } catch (error) {
-      console.error("Error sending chat to n8n:", error);
-      throw error; // Lo ataja handleChatSubmit
+      console.error("Error communicating with Rora Backend:", error);
+      throw error;
     }
   };
 
@@ -159,7 +163,7 @@ export const FloatingChatWidget: React.FC = () => {
     setMessages(prev => [...prev, newMsg]);
 
     try {
-      const botResponseText = await sendToWebhook(currentText);
+      const botResponseText = await sendToRora(currentText);
 
       setMessages(prev => [...prev, {
         id: Date.now().toString() + 'bot',
@@ -167,11 +171,10 @@ export const FloatingChatWidget: React.FC = () => {
         text: botResponseText
       }]);
     } catch (error) {
-       // Este solo se dispara por errores fatales de fetch (red caída, timeout total).
        setMessages(prev => [...prev, {
         id: Date.now().toString() + 'bot',
         sender: 'bot',
-        text: "Hubo un problema al procesar la solicitud"
+        text: "Hubo un problema al procesar la solicitud con Rora."
       }]);
     } finally {
       setLoading(false);
@@ -242,7 +245,7 @@ export const FloatingChatWidget: React.FC = () => {
                    </div>
                    <div className="p-3 bg-obsidian-card border border-obsidian-border rounded-2xl rounded-tl-none flex items-center gap-2">
                      <Loader2 className="w-4 h-4 animate-spin opacity-50" />
-                     <span className="text-xs opacity-70">Gemini escribiendo...</span>
+                     <span className="text-xs opacity-70">Rora orquestando...</span>
                    </div>
                  </div>
               )}
@@ -283,7 +286,7 @@ export const FloatingChatWidget: React.FC = () => {
                   type="text"
                   value={chatInput}
                   onChange={e => setChatInput(e.target.value)}
-                  placeholder={isListening ? "Habla ahora..." : "Instrucciones para Gemini..."}
+                  placeholder={isListening ? "Habla ahora..." : "Instrucciones para Rora..."}
                   className={cn(
                     "flex-1 border text-sm rounded-xl px-3 py-2 outline-none transition-colors",
                     isListening 

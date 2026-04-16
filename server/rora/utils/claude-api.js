@@ -85,9 +85,9 @@ export async function crearAgenteManaged(nombre, systemPrompt) {
 }
 
 // NUEVA FUNCIÓN: Llamar a un Managed Agent (Protocolo Sesión -> Evento -> Polling)
-export async function llamarAgenteManaged(agentId, mensajeUsuario, environmentId) {
+export async function llamarAgenteManaged(agentId, mensajeUsuario, environmentId, sessionId = null) {
     try {
-      console.log(`🚀 Iniciando comunicación con Agente: ${agentId}`);
+      console.log(`🚀 Comunicación con Agente: ${agentId} ${sessionId ? '(Sesión Reusada)' : '(Nueva Sesión)'}`);
       
       const commonHeaders = {
         'x-api-key': getEnv('ANTHROPIC_API_KEY'),
@@ -96,39 +96,53 @@ export async function llamarAgenteManaged(agentId, mensajeUsuario, environmentId
         'content-type': 'application/json'
       };
 
-      // 1. Crear Sesión
-      const sessionResponse = await fetch('https://api.anthropic.com/v1/sessions', {
-        method: 'POST',
-        headers: commonHeaders,
-        body: JSON.stringify({ 
-          agent: agentId,
-          environment_id: environmentId,
-          metadata: { context: 'RORA_TEST_SESSION' }
-        })
-      });
+      let activeSessionId = sessionId;
 
-      if (!sessionResponse.ok) {
-        const err = await sessionResponse.text();
-        throw new Error(`Fallo al crear sesión: ${sessionResponse.status} - ${err}`);
+      // 1. Crear Sesión si no existe
+      if (!activeSessionId) {
+        console.log('🌐 Creando nueva sesión de orquestación...');
+        const sessionResponse = await fetch('https://api.anthropic.com/v1/sessions', {
+          method: 'POST',
+          headers: commonHeaders,
+          body: JSON.stringify({ 
+            agent: agentId,
+            environment_id: environmentId,
+            metadata: { 
+              context: 'RORA_ORCHESTRATOR',
+              // Token Efficiency: Mark as cache-eligible if supported in beta
+              cache_control: { type: "ephemeral" } 
+            }
+          })
+        });
+
+        if (!sessionResponse.ok) {
+          const err = await sessionResponse.text();
+          throw new Error(`Fallo al crear sesión: ${sessionResponse.status} - ${err}`);
+        }
+
+        const session = await sessionResponse.json();
+        activeSessionId = session.id;
+        console.log(`📂 Sesión creada: ${activeSessionId}`);
       }
 
-      const session = await sessionResponse.json();
-      const sessionId = session.id;
-      console.log(`📂 Sesión creada: ${sessionId}`);
-
-      // 2. Enviar Mensaje (Evento en Array)
+      // 2. Enviar Mensaje (Evento en Array con Cache Hint)
       const eventBody = {
         events: [
           {
             type: 'user.message',
-            content: [{ type: 'text', text: mensajeUsuario }]
+            content: [
+              { 
+                type: 'text', 
+                text: mensajeUsuario,
+                // Token Efficiency: Hint to cache the context prefix
+                cache_control: { type: "ephemeral" } 
+              }
+            ]
           }
         ]
       };
       
-      console.log('📡 Enviando Evento a Sesión:', JSON.stringify(eventBody));
-
-      const eventResponse = await fetch(`https://api.anthropic.com/v1/sessions/${sessionId}/events`, {
+      const eventResponse = await fetch(`https://api.anthropic.com/v1/sessions/${activeSessionId}/events`, {
         method: 'POST',
         headers: commonHeaders,
         body: JSON.stringify(eventBody)
@@ -136,50 +150,60 @@ export async function llamarAgenteManaged(agentId, mensajeUsuario, environmentId
 
       if (!eventResponse.ok) {
         const err = await eventResponse.text();
+        // Si la sesión expiró, intentamos una vez más sin sessionId
+        if (eventResponse.status === 404 && sessionId) {
+          console.warn('⚠️ Sesión expirada. Reintentando con nueva sesión...');
+          return llamarAgenteManaged(agentId, mensajeUsuario, environmentId, null);
+        }
         throw new Error(`Fallo al enviar mensaje: ${eventResponse.status} - ${err}`);
       }
 
-      // 3. Polling de Respuesta
-      let attempts = 0;
-      const MAX_ATTEMPTS = 15;
-      
-      console.log('⏳ Esperando respuesta de Rora (Polling)...');
-      
-      while (attempts < MAX_ATTEMPTS) {
-        await new Promise(resolve => setTimeout(resolve, 2000)); // Esperar 2 segundos entre polls
+      // Devolvemos el sessionId para que el frontend lo guarde
+      const responseText = await (async () => {
+        let attempts = 0;
+        const MAX_ATTEMPTS = 15;
+        console.log(`⏳ Esperando respuesta de Rora en sesión ${activeSessionId}...`);
         
-        const pollResponse = await fetch(`https://api.anthropic.com/v1/sessions/${sessionId}/events`, {
-          method: 'GET',
-          headers: commonHeaders
-        });
-
-        if (pollResponse.ok) {
-          const pollData = await pollResponse.json();
-          // Los eventos suelen venir en un array 'data' o similar
-          const events = pollData.data || pollData;
+        while (attempts < MAX_ATTEMPTS) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
           
-          if (Array.isArray(events)) {
-            // Buscamos el último evento de tipo agent.message o similar que contenga texto
-            const lastResponse = events.reverse().find(e =>  e.type === 'agent.message' || e.type === 'text');
-            if (lastResponse) {
-              // El formato exacto depende de la beta, usualmente e.content[0].text o e.text
-              const text = lastResponse.text || (lastResponse.content && lastResponse.content[0].text);
-              if (text) {
-                console.log('✅ Respuesta recibida de Rora.');
-                return text;
+          const pollResponse = await fetch(`https://api.anthropic.com/v1/sessions/${activeSessionId}/events`, {
+            method: 'GET',
+            headers: commonHeaders
+          });
+
+          if (pollResponse.ok) {
+            const pollData = await pollResponse.json();
+            const events = pollData.data || pollData;
+            
+            if (Array.isArray(events)) {
+              // Filtrar eventos de respuesta del agente
+              const lastResponse = events.reverse().find(e =>  
+                e.type === 'agent.message' || 
+                (e.type === 'text' && e.role === 'assistant')
+              );
+              
+              if (lastResponse) {
+                const text = lastResponse.text || (lastResponse.content && lastResponse.content[0].text);
+                if (text) {
+                  console.log('✅ Respuesta recibida.');
+                  return text;
+                }
               }
             }
           }
+          attempts++;
         }
-        
-        attempts++;
-        console.log(`...intento ${attempts}/${MAX_ATTEMPTS}`);
-      }
+        throw new Error('Timeout esperando respuesta del agente.');
+      })();
 
-      throw new Error('Tiempo de espera agotado esperando respuesta del Agente Managed.');
+      return {
+        reply: responseText,
+        sessionId: activeSessionId
+      };
 
     } catch (error) {
-      console.error('Error en llamarAgenteManaged (Bridge):', error);
+      console.error('Error en llamarAgenteManaged:', error);
       throw error;
     }
-  }
+}

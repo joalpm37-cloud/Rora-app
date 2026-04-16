@@ -5,47 +5,47 @@
 export const GHL_TOOLS = [
   {
     name: "crear_contacto",
-    description: "Crea un nuevo contacto o lead en GoHighLevel con los datos proporcionados.",
+    description: "Crea un lead en GHL con los datos provistos.",
     input_schema: {
       type: "object",
       properties: {
-        nombre: { type: "string", description: "Nombre completo del contacto" },
-        email: { type: "string", description: "Email de contacto" },
-        telefono: { type: "string", description: "Número de teléfono" },
-        notes: { type: "string", description: "Notas adicionales sobre el lead" }
+        nombre: { type: "string" },
+        email: { type: "string" },
+        telefono: { type: "string" },
+        notes: { type: "string" }
       },
       required: ["nombre"]
     }
   },
   {
     name: "buscar_contacto",
-    description: "Busca un contacto existente en la base de datos de GHL.",
+    description: "Busca contacto en GHL por nombre/datos.",
     input_schema: {
       type: "object",
       properties: {
-        query: { type: "string", description: "Nombre, email o teléfono a buscar" }
+        query: { type: "string", description: "Dato a buscar" }
       },
       required: ["query"]
     }
   },
   {
     name: "obtener_conversaciones",
-    description: "Obtiene las conversaciones recientes de WhatsApp, Instagram y SMS desde GHL.",
+    description: "Lista chats recientes de GHL.",
     input_schema: { type: "object", properties: {} }
   },
   {
     name: "obtener_calendario",
-    description: "Obtiene los slots de tiempo disponibles en el calendario del Realtor.",
+    description: "Muestra disponibilidad del calendario Realtor.",
     input_schema: { type: "object", properties: {} }
   },
   {
     name: "enviar_mensaje",
-    description: "Envía un mensaje de texto a una conversación específica en GHL.",
+    description: "Envía texto a un chat de GHL.",
     input_schema: {
       type: "object",
       properties: {
-        conversationId: { type: "string", description: "ID de la conversación de GHL" },
-        mensaje: { type: "string", description: "Contenido del mensaje a enviar" }
+        conversationId: { type: "string" },
+        mensaje: { type: "string" },
       },
       required: ["conversationId", "mensaje"]
     }
