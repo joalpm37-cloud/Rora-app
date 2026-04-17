@@ -33,6 +33,19 @@ app.post('/api/rora/agents/test', async (req, res) => {
 });
 
 // Main Chat Endpoint
+// Endpoint de diagnóstico para verificar el estado de las llaves (oculto/admin)
+app.get('/api/diag', (req, res) => {
+  const mask = (val) => val ? `${val.substring(0, 4)}...${val.substring(val.length - 4)}` : 'MISSING';
+  res.json({
+    status: 'online',
+    config: {
+      GHL_PIT_TOKEN: mask(process.env.GHL_PIT_TOKEN || process.env.VITE_GHL_PIT_TOKEN),
+      GHL_LOCATION_ID: mask(process.env.GHL_LOCATION_ID || process.env.VITE_GHL_LOCATION_ID),
+      ANTHROPIC_API_KEY: mask(process.env.ANTHROPIC_API_KEY)
+    }
+  });
+});
+
 app.post('/api/rora/chat', async (req, res) => {
   const { mensaje, sessionId, systemPrompt, historial, tools } = req.body;
 
