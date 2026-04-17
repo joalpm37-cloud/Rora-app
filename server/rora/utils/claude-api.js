@@ -17,10 +17,16 @@ export async function llamarAgenteManaged(mensajeUsuario, sessionId = null, syst
     const requestBody = {
       model: getEnv('CLAUDE_MODEL') || 'claude-haiku-4-5-20251001',
       max_tokens: 1536,
-      system: systemPrompt || `Eres RORA, Directora de Orquesta de la plataforma inmobiliaria RORA.
+      system: [
+        {
+          type: "text",
+          text: systemPrompt || `Eres RORA, Directora de Orquesta de la plataforma inmobiliaria RORA.
       Tu misión es orquestar herramientas de GoHighLevel (GHL) para ayudar al usuario. 
       Usa las herramientas disponibles para obtener datos antes de responder.
       Hoy es ${new Date().toLocaleDateString()}.`,
+          cache_control: { type: "ephemeral" }
+        }
+      ],
       tools: tools || GHL_TOOLS,
       messages: [
         ...(historial || []),
@@ -41,6 +47,7 @@ export async function llamarAgenteManaged(mensajeUsuario, sessionId = null, syst
         headers: {
           'x-api-key': getEnv('ANTHROPIC_API_KEY') || getEnv('VITE_CLAUDE_API_KEY'),
           'anthropic-version': '2023-06-01',
+          'anthropic-beta': 'prompt-caching-2024-07-31',
           'content-type': 'application/json'
         },
         body: JSON.stringify(requestBody)
@@ -88,5 +95,5 @@ export async function llamarAgenteManaged(mensajeUsuario, sessionId = null, syst
 
 // Compatibilidad con versiones previas
 export const llamarRoraPrime = (u, h, s) => llamarAgenteManaged(u, s);
-export const llamarClaude = (sys, u, h, t) => llamarAgenteManaged(u);
+export const llamarClaude = (sys, u, h, t) => llamarAgenteManaged(u, null, sys, h, t);
 export const crearAgenteManaged = (n, s, t) => { return { id: "VANILLA_STABLE_V2.10.2" }; };
