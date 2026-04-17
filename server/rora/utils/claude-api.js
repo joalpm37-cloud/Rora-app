@@ -2,7 +2,11 @@ import { GHL_TOOLS } from './claude-tools.js';
 import * as ghl from './ghl-api.js';
 
 const getEnv = (name) => {
-  return process.env[name] || process.env[`VITE_${name}`] || process.env[`CLAUDE_API_KEY`];
+  const valley = process.env[name] || process.env[`VITE_${name}`];
+  if (!valley && name !== 'ANTHROPIC_API_KEY' && name !== 'VITE_CLAUDE_API_KEY') {
+    console.warn(`⚠️ Warning: Environment variable ${name} is NOT set.`);
+  }
+  return valley;
 };
 
 /**
@@ -67,13 +71,24 @@ export async function llamarAgenteManaged(mensajeUsuario, sessionId = null, syst
         requestBody.messages.push({ role: 'assistant', content: messageContent });
         
         const toolResults = await Promise.all(toolCalls.map(async (tc) => {
-          console.log(`🛠️ Ejecutando Tool: ${tc.name}`);
-          const result = await ghl.executeGHLAction(tc.name, tc.input);
-          return {
-            type: 'tool_result',
-            tool_use_id: tc.id,
-            content: JSON.stringify(result)
-          };
+          console.log(`🛠️ Executando Tool: ${tc.name}`, tc.input);
+          try {
+            const result = await ghl.executeGHLAction(tc.name, tc.input);
+            console.log(`✅ Resultado Tool [${tc.name}]:`, JSON.stringify(result).substring(0, 100) + '...');
+            return {
+              type: 'tool_result',
+              tool_use_id: tc.id,
+              content: JSON.stringify(result)
+            };
+          } catch (toolError) {
+            console.error(`❌ Error en Tool [${tc.name}]:`, toolError.message);
+            return {
+              type: 'tool_result',
+              tool_use_id: tc.id,
+              content: JSON.stringify({ error: toolError.message, status: 'failed' }),
+              is_error: true
+            };
+          }
         }));
 
         requestBody.messages.push({ role: 'user', content: toolResults });

@@ -13,13 +13,13 @@ const LOCATION_ID = getEnv('GHL_LOCATION_ID');
 // Helper genérico para llamadas a GHL
 async function callGHL(endpoint, method = 'GET', body = null) {
   try {
-    const url = new URL(`${GHL_API_BASE}${endpoint}`);
-    // Siempre inyectamos el locationId si no está presente en la query
-    if (!url.searchParams.has('locationId') && endpoint.includes('?')) {
-        url.searchParams.append('locationId', LOCATION_ID);
-    } else if (!endpoint.includes('?')) {
-        url.href += `?locationId=${LOCATION_ID}`;
+    if (!PIT_TOKEN || !LOCATION_ID) {
+        throw new Error(`Missing GHL Configuration: PIT_TOKEN or LOCATION_ID is not set.`);
     }
+
+    const separator = endpoint.includes('?') ? '&' : '?';
+    const finalEndpoint = `${endpoint}${separator}locationId=${LOCATION_ID}`;
+    const url = `${GHL_API_BASE}${finalEndpoint}`;
 
     const options = {
       method,
