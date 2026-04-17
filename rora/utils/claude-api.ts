@@ -58,6 +58,6 @@ export async function llamarClaude(systemPrompt, mensajeUsuario, historial = [],
     
   } catch (error) {
     console.error('Error al intentar llamar a Claude:', error);
-    return 'RORA no está disponible en este momento. Intenta de nuevo.';
+    return `Error de conexión: ${error.message || 'Desconocido'}. Por favor, verifica tu conexión o el estado del servidor en Render.`;
   }
 }

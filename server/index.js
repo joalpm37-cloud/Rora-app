@@ -10,9 +10,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-app.use(cors({
-  origin: ['http://localhost:3000', 'https://app.rora.com.es']
-}));
+app.use(cors()); // Permisivo temporalmente para diagnóstico
 app.use(express.json());
 
 // TEST Endpoint: Probar conexión con Claude (Sin entornos complejos)
