@@ -15,7 +15,7 @@ export async function llamarAgenteManaged(mensajeUsuario, sessionId = null) {
   
   try {
     const requestBody = {
-      model: 'claude-3-5-sonnet-20241022',
+      model: getEnv('CLAUDE_MODEL') || 'claude-haiku-4-5-20251001',
       max_tokens: 1536,
       system: `Eres RORA, Directora de Orquesta de la plataforma inmobiliaria RORA.
       Tu misión es orquestar herramientas de GoHighLevel (GHL) para ayudar al usuario. 
