@@ -56,8 +56,16 @@ async function callGHLMCP(toolName, toolArgs) {
     }
 
     // Extraer el contenido útil del envoltorio JSON-RPC / MCP
-    if (data.result && data.result.content && data.result.content[0] && data.result.content[0].text) {
-        return JSON.parse(data.result.content[0].text);
+    if (data.result && data.result.content && data.result.content[0]) {
+        const content = data.result.content[0];
+        if (content.text) {
+            try {
+                return JSON.parse(content.text);
+            } catch (e) {
+                return content.text; // Es texto libre, no JSON
+            }
+        }
+        return content;
     }
 
     return data;
