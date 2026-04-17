@@ -6,118 +6,79 @@ const getEnv = (name) => {
   return process.env[name] || process.env[`VITE_${name}`];
 };
 
-const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const PIT_TOKEN = getEnv('GHL_PIT_TOKEN');
 const LOCATION_ID = getEnv('GHL_LOCATION_ID');
 
-// Helper genérico para llamadas a GHL
-async function callGHL(endpoint, method = 'GET', body = null) {
+/**
+ * MOTOR MCP CLOUD: Ejecuta herramientas vía LeadConnector MCP Hub
+ */
+async function callGHLMCP(toolName, toolArgs) {
   try {
     if (!PIT_TOKEN || !LOCATION_ID) {
-        throw new Error(`Missing GHL Configuration: PIT_TOKEN or LOCATION_ID is not set.`);
+      throw new Error(`Configuración GHL incompleta en Render (GHL_PIT_TOKEN o GHL_LOCATION_ID no detectados).`);
     }
 
-    const separator = endpoint.includes('?') ? '&' : '?';
-    const finalEndpoint = `${endpoint}${separator}locationId=${LOCATION_ID}`;
-    const url = `${GHL_API_BASE}${finalEndpoint}`;
-
-    const options = {
-      method,
+    const response = await fetch('https://services.leadconnectorhq.com/mcp/', {
+      method: 'POST',
       headers: {
         'Authorization': `Bearer ${PIT_TOKEN}`,
-        'Version': '2021-07-28',
+        'locationId': LOCATION_ID,
         'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: Date.now(),
+        method: "tools/call",
+        params: {
+          name: toolName,
+          arguments: toolArgs
+        }
+      })
+    });
+
+    const text = await response.text();
+    let data;
+
+    try {
+      // El endpoint de MCP de GHL a veces devuelve SSE (data: {...})
+      const match = text.match(/data:\s*({.*})/);
+      if (match) {
+        data = JSON.parse(match[1].trim());
+      } else {
+        data = JSON.parse(text);
       }
-    };
-
-    if (body) options.body = JSON.stringify(body);
-
-    const response = await fetch(url.href, options);
-    if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`GHL Error ${response.status}: ${errText}`);
+    } catch (e) {
+      throw new Error(`Fallo al procesar respuesta MCP: ${text.substring(0, 100)}`);
     }
-    return await response.json();
+
+    if (!response.ok) {
+        throw new Error(`GHL MCP Error ${response.status}: ${JSON.stringify(data)}`);
+    }
+
+    // Extraer el contenido útil del envoltorio JSON-RPC / MCP
+    if (data.result && data.result.content && data.result.content[0] && data.result.content[0].text) {
+        return JSON.parse(data.result.content[0].text);
+    }
+
+    return data;
   } catch (error) {
-    console.error(`❌ Fallo en GHL [${method} ${endpoint}]:`, error.message);
+    console.error(`❌ Fallo en MCP [${toolName}]:`, error.message);
     throw error;
   }
 }
 
-// DISPATCHER: Resuelve cualquier acción de la lista de 26 herramientas
+// DISPATCHER: Mapea las llamadas del agente al Hub MCP
 export async function executeGHLAction(action, args) {
-  switch (action) {
-    // --- Calendars ---
-    case 'calendars_get-events':
-      return await callGHL(`/calendars/events?calendarId=${args.calendarId || ''}&startTime=${args.startTime || ''}&endTime=${args.endTime || ''}`);
-    case 'calendars_get-appointment-notes':
-      return await callGHL(`/calendars/appointments/${args.appointmentId}/notes`);
-
-    // --- Contacts ---
-    case 'contacts_get-tasks':
-      return await callGHL(`/contacts/${args.contactId}/tasks`);
-    case 'contacts_add-tags':
-      return await callGHL(`/contacts/${args.contactId}/tags`, 'POST', { tags: args.tags });
-    case 'contacts_remove-tags':
-      return await callGHL(`/contacts/${args.contactId}/tags`, 'DELETE', { tags: args.tags });
-    case 'contacts_get-contact':
-      return await callGHL(`/contacts/${args.contactId}`);
-    case 'contacts_update-contact':
-      return await callGHL(`/contacts/${args.contactId}`, 'PUT', args.data);
-    case 'contacts_upsert-contact':
-      return await callGHL(`/contacts/upsert`, 'POST', { ...args.data, locationId: LOCATION_ID });
-    case 'contacts_create-contact':
-      return await callGHL(`/contacts/`, 'POST', { ...args.data, locationId: LOCATION_ID });
-    case 'contacts_get-contacts':
-      return await callGHL(`/contacts/?query=${args.query || ''}`);
-
-    // --- Conversations ---
-    case 'conversations_search':
-      return await callGHL(`/conversations/search?query=${args.query || ''}`);
-    case 'conversations_get-messages':
-      return await callGHL(`/conversations/${args.conversationId}/messages`);
-    case 'conversations_send-message':
-      return await callGHL(`/conversations/messages`, 'POST', { 
-          type: args.type || 'SMS', 
-          message: args.message, 
-          conversationId: args.conversationId 
-      });
-
-    // --- Locations ---
-    case 'locations_get-details':
-      return await callGHL(`/locations/${LOCATION_ID}`);
-    case 'locations_get-custom-fields':
-      return await callGHL(`/locations/${LOCATION_ID}/custom-fields`);
-
-    // --- Opportunities ---
-    case 'opportunities_search':
-      return await callGHL(`/opportunities/search?query=${args.query || ''}`);
-    case 'opportunities_get-pipelines':
-      return await callGHL(`/opportunities/pipelines`);
-    case 'opportunities_get-one':
-      return await callGHL(`/opportunities/${args.id}`);
-    case 'opportunities_update':
-      return await callGHL(`/opportunities/${args.id}`, 'PUT', args.data);
-
-    // --- Social & Emails (Mapeos Simplificados) ---
-    case 'social_create-post':
-      return await callGHL(`/social-media-posting/posts`, 'POST', args);
-    case 'social_get-post':
-      return await callGHL(`/social-media-posting/posts/${args.postId}`);
-    case 'social_get-accounts':
-      return await callGHL(`/social-media-posting/accounts`);
-    case 'social_get-stats':
-      return await callGHL(`/social-media-posting/stats`);
-    case 'social_get-posts':
-      return await callGHL(`/social-media-posting/posts`);
-    case 'emails_get-templates':
-      return await callGHL(`/emails/templates`);
-    case 'emails_create-template':
-      return await callGHL(`/emails/templates`, 'POST', args);
-
-    default:
-      throw new Error(`Acción ${action} no soportada en el Dispatcher.`);
-  }
+  console.log(`📡 Dispatching MCP Action: ${action}`);
+  
+  // Mapeo directo de nombres (Standardización)
+  let mcpToolName = action;
+  
+  // Ajustes de compatibilidad de nombres si es necesario
+  if (action === 'contacts_get-contacts') mcpToolName = 'contacts_get-contacts';
+  if (action === 'contacts_get-contact') mcpToolName = 'contacts_get-contact';
+  
+  return await callGHLMCP(mcpToolName, args);
 }
 
 // Mantener exportaciones antiguas para compatibilidad
