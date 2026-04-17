@@ -7,6 +7,8 @@ const getEnv = (name) => {
   return process.env[name];
 };
 
+const RORA_BACKEND_URL = 'https://rora-app.onrender.com/api/rora/chat';
+
 export async function llamarClaude(systemPrompt, mensajeUsuario, historial = [], tools = []) {
   try {
     const requestBody = {
@@ -27,14 +29,17 @@ export async function llamarClaude(systemPrompt, mensajeUsuario, historial = [],
       // You can define tool_choice here if needed, defaults to auto
     }
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch(RORA_BACKEND_URL, {
       method: 'POST',
       headers: {
-        'x-api-key': getEnv('VITE_CLAUDE_API_KEY'),
-        'anthropic-version': '2023-06-01',
         'content-type': 'application/json'
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify({
+        mensaje: mensajeUsuario,
+        systemPrompt: systemPrompt,
+        historial: historial,
+        tools: tools
+      })
     });
 
     if (!response.ok) {
@@ -45,12 +50,11 @@ export async function llamarClaude(systemPrompt, mensajeUsuario, historial = [],
 
     const data = await response.json();
     
-    // Si la llamada incluyó herramientas, devolvemos todo el objeto para procesar tool_use
-    if (tools && tools.length > 0) {
-        return data; // Return full data object
+    if (data.success && data.reply) {
+        return data.reply;
     }
     
-    return data.content[0].text;
+    return data.error || 'Error en la respuesta del servidor RORA.';
     
   } catch (error) {
     console.error('Error al intentar llamar a Claude:', error);

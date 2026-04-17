@@ -10,19 +10,22 @@ const getEnv = (name) => {
  * Eliminamos TODAS las dependencias de betas y modelos experimentales.
  * Usamos el estándar de oro de Anthropic para garantizar que tus créditos funcionen.
  */
-export async function llamarAgenteManaged(mensajeUsuario, sessionId = null) {
+export async function llamarAgenteManaged(mensajeUsuario, sessionId = null, systemPrompt = null, historial = [], tools = null) {
   console.log(`📡 [V2.10.2] Rora Vanilla Sync: "${mensajeUsuario}"`);
   
   try {
     const requestBody = {
       model: getEnv('CLAUDE_MODEL') || 'claude-haiku-4-5-20251001',
       max_tokens: 1536,
-      system: `Eres RORA, Directora de Orquesta de la plataforma inmobiliaria RORA.
+      system: systemPrompt || `Eres RORA, Directora de Orquesta de la plataforma inmobiliaria RORA.
       Tu misión es orquestar herramientas de GoHighLevel (GHL) para ayudar al usuario. 
       Usa las herramientas disponibles para obtener datos antes de responder.
       Hoy es ${new Date().toLocaleDateString()}.`,
-      tools: GHL_TOOLS,
-      messages: [{ role: 'user', content: mensajeUsuario }]
+      tools: tools || GHL_TOOLS,
+      messages: [
+        ...(historial || []),
+        ...(mensajeUsuario ? [{ role: 'user', content: mensajeUsuario }] : [])
+      ]
     };
 
     let finalResponse = null;

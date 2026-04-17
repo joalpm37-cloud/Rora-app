@@ -36,14 +36,14 @@ app.post('/api/rora/agents/test', async (req, res) => {
 
 // Main Chat Endpoint
 app.post('/api/rora/chat', async (req, res) => {
-  const { mensaje, sessionId } = req.body;
+  const { mensaje, sessionId, systemPrompt, historial, tools } = req.body;
 
-  if (!mensaje) {
-    return res.status(400).json({ error: 'Mensaje es requerido' });
+  if (!mensaje && !historial) {
+    return res.status(400).json({ error: 'Mensaje o historial es requerido' });
   }
 
   try {
-    const result = await llamarAgenteManaged(mensaje, sessionId);
+    const result = await llamarAgenteManaged(mensaje, sessionId, systemPrompt, historial, tools);
     res.json({
       success: true,
       reply: result.reply,
