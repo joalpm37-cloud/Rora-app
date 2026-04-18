@@ -15,7 +15,7 @@ const LOCATION_ID = getEnv('GHL_LOCATION_ID');
 async function callGHLMCP(toolName, toolArgs) {
   try {
     if (!PIT_TOKEN || !LOCATION_ID) {
-      throw new Error(`Configuración GHL incompleta en Render (GHL_PIT_TOKEN o GHL_LOCATION_ID no detectados).`);
+      throw new Error(`GHL Config MISSING on Render.`);
     }
 
     const response = await fetch('https://services.leadconnectorhq.com/mcp/', {
@@ -23,7 +23,9 @@ async function callGHLMCP(toolName, toolArgs) {
       headers: {
         'Authorization': `Bearer ${PIT_TOKEN}`,
         'locationId': LOCATION_ID,
-        'Content-Type': 'application/json'
+        'Version': '2021-07-28',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json, text/event-stream'
       },
       body: JSON.stringify({
         jsonrpc: "2.0",
@@ -37,40 +39,53 @@ async function callGHLMCP(toolName, toolArgs) {
     });
 
     const text = await response.text();
-    let data;
+    
+    // GHL MCP Hub devuelve eventos SSE. 
+    // Buscamos todas las líneas que empiezan con "data:"
+    const lines = text.split('\n');
+    
+    for (const line of lines) {
+      if (line.trim().startsWith('data:')) {
+        const jsonStr = line.replace('data:', '').trim();
+        if (!jsonStr) continue;
 
-    try {
-      // El endpoint de MCP de GHL a veces devuelve SSE (data: {...})
-      const match = text.match(/data:\s*({.*})/);
-      if (match) {
-        data = JSON.parse(match[1].trim());
-      } else {
-        data = JSON.parse(text);
+        try {
+          const parsedChunk = JSON.parse(jsonStr);
+          // Si el chunk tiene el resultado directo, lo extraemos y retornamos
+          if (parsedChunk.result && parsedChunk.result.content && parsedChunk.result.content[0]) {
+             const content = parsedChunk.result.content[0];
+             if (content.text) {
+               try {
+                 return JSON.parse(content.text);
+               } catch(e) {
+                 return content.text;
+               }
+             }
+             return content;
+          }
+          // Si es un error del JSON-RPC
+          if (parsedChunk.error) {
+            throw new Error(`JSON-RPC Error: ${JSON.stringify(parsedChunk.error)}`);
+          }
+        } catch (e) {
+          if (e.message.includes('JSON-RPC Error')) throw e;
+          console.warn("Retrying chunk parse or skip:", e.message);
+        }
       }
-    } catch (e) {
-      throw new Error(`Fallo al procesar respuesta MCP: ${text.substring(0, 100)}`);
     }
 
     if (!response.ok) {
-        throw new Error(`GHL MCP Error ${response.status}: ${JSON.stringify(data)}`);
+        throw new Error(`GHL MCP Error ${response.status}: ${text.substring(0, 100)}`);
     }
 
-    // Extraer el contenido útil del envoltorio JSON-RPC / MCP
-    if (data.result && data.result.content && data.result.content[0]) {
-        const content = data.result.content[0];
-        if (content.text) {
-            try {
-                return JSON.parse(content.text);
-            } catch (e) {
-                return content.text; // Es texto libre, no JSON
-            }
-        }
-        return content;
+    // Fallback: si no es SSE o falló el split, intentamos parseo directo
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      return text;
     }
-
-    return data;
   } catch (error) {
-    console.error(`❌ Fallo en MCP [${toolName}]:`, error.message);
+    console.error(`❌ MCP [${toolName}] Failure:`, error.message);
     throw error;
   }
 }

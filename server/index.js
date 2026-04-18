@@ -46,6 +46,17 @@ app.get('/api/diag', (req, res) => {
   });
 });
 
+// Endpoint de test directo para GHL
+app.get('/api/test-ghl', async (req, res) => {
+  try {
+    const query = req.query.query || 'Joseph';
+    const result = await ghl.executeGHLAction('contacts_get-contacts', { query });
+    res.json({ success: true, result });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.post('/api/rora/chat', async (req, res) => {
   const { mensaje, sessionId, systemPrompt, historial, tools } = req.body;
 
