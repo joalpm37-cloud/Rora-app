@@ -22,6 +22,8 @@ export async function procesarMensajeRora(mensajeUsuario, historial = []) {
             .replace(/ACCION:.*(\r?\n|$)/ig, '')
             .replace(/DATOS:.*(\r?\n|$)/ig, '')
             .replace(/\*\*/g, '')
+            .replace(/__/g, '')
+            .replace(/#{1,6}\s?/g, '')
             .trim();
         return { mensajeParaMostrar, accion, datos: '' };
     }
@@ -90,6 +92,8 @@ export async function procesarMensajeRora(mensajeUsuario, historial = []) {
             .replace(/ACCION:.*(\r?\n|$)/ig, '')
             .replace(/DATOS:.*(\r?\n|$)/ig, '')
             .replace(/\*\*/g, '')
+            .replace(/__/g, '')
+            .replace(/#{1,6}\s?/g, '')
             .trim();
         return { mensajeParaMostrar, accion, datos: '' };
       }
@@ -106,6 +110,8 @@ export async function procesarMensajeRora(mensajeUsuario, historial = []) {
         .replace(/ACCION:.*(\r?\n|$)/ig, '')
         .replace(/DATOS:.*(\r?\n|$)/ig, '')
         .replace(/\*\*/g, '')
+        .replace(/__/g, '')
+        .replace(/#{1,6}\s?/g, '')
         .trim();
 
     return {

@@ -126,8 +126,13 @@ app.post('/api/rora/chat', async (req, res) => {
     // Usamos el orquestador estable que ya tiene los fixes de GHL y prompts
     const result = await procesarMensajeRora(mensaje, historial || []);
     
-    // Filtro de limpieza final (Anti-Asteriscos)
-    const replyLimpio = result.mensajeParaMostrar ? result.mensajeParaMostrar.replace(/\*\*/g, '') : '';
+    // Filtro de limpieza final (Anti-Asteriscos y Markdown)
+    const replyLimpio = result.mensajeParaMostrar 
+      ? result.mensajeParaMostrar
+          .replace(/\*\*/g, '')
+          .replace(/__/g, '')
+          .replace(/#{1,6}\s?/g, '') 
+      : '';
 
     res.json({
       success: true,
