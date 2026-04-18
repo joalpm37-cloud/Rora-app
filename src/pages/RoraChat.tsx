@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Bot, Check } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
 interface Message {
   id: string;
@@ -131,7 +132,7 @@ export const RoraChat: React.FC = () => {
       const roraMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'rora',
-        content: (respuesta.mensajeParaMostrar || '').replace(/\*\*/g, ''),
+        content: respuesta.mensajeParaMostrar || '',
         accion: respuesta.accion,
         ghlCreated
       };
@@ -209,7 +210,13 @@ export const RoraChat: React.FC = () => {
                   : 'bg-[#2A2A2A] text-white rounded-tl-sm border border-obsidian-border'
               }`}
             >
-              <p className="whitespace-pre-wrap leading-relaxed text-sm md:text-base">{msg.content}</p>
+              <div className="whitespace-pre-wrap leading-relaxed text-sm md:text-base prose prose-invert max-w-none">
+                {msg.role === 'rora' ? (
+                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                ) : (
+                  msg.content
+                )}
+              </div>
               
               <div className="flex flex-col items-start">
                 {msg.role === 'rora' && msg.accion && msg.accion !== 'ninguna' && (

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, X, Send, User, Bot, Loader2, Mic } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -168,7 +169,7 @@ export const FloatingChatWidget: React.FC = () => {
       setMessages(prev => [...prev, {
         id: Date.now().toString() + 'bot',
         sender: 'bot',
-        text: (botResponseText || '').replace(/\*\*/g, '')
+        text: botResponseText || ''
       }]);
     } catch (error) {
        setMessages(prev => [...prev, {
@@ -228,12 +229,16 @@ export const FloatingChatWidget: React.FC = () => {
                   </div>
                   
                   <div className={cn(
-                    "p-3 rounded-2xl text-sm leading-relaxed overflow-hidden break-words",  
+                    "p-3 rounded-2xl text-sm leading-relaxed overflow-hidden break-words prose prose-invert max-w-none",  
                     msg.sender === 'user' 
                       ? "bg-obsidian-primary text-obsidian-bg rounded-tr-none font-medium" 
                       : "bg-obsidian-card border border-obsidian-border rounded-tl-none text-gray-200"
                   )}>
-                    {msg.text}
+                    {msg.sender === 'bot' ? (
+                      <ReactMarkdown>{msg.text}</ReactMarkdown>
+                    ) : (
+                      msg.text
+                    )}
                   </div>
                 </div>
               ))}

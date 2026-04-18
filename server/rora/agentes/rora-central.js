@@ -21,9 +21,6 @@ export async function procesarMensajeRora(mensajeUsuario, historial = []) {
         const mensajeParaMostrar = respuestaClaude
             .replace(/ACCION:.*(\r?\n|$)/ig, '')
             .replace(/DATOS:.*(\r?\n|$)/ig, '')
-            .replace(/\*\*/g, '')
-            .replace(/__/g, '')
-            .replace(/#{1,6}\s?/g, '')
             .trim();
         return { mensajeParaMostrar, accion, datos: '' };
     }
@@ -91,9 +88,6 @@ export async function procesarMensajeRora(mensajeUsuario, historial = []) {
         const mensajeParaMostrar = respuestaFinal
             .replace(/ACCION:.*(\r?\n|$)/ig, '')
             .replace(/DATOS:.*(\r?\n|$)/ig, '')
-            .replace(/\*\*/g, '')
-            .replace(/__/g, '')
-            .replace(/#{1,6}\s?/g, '')
             .trim();
         return { mensajeParaMostrar, accion, datos: '' };
       }
@@ -109,9 +103,6 @@ export async function procesarMensajeRora(mensajeUsuario, historial = []) {
     const mensajeParaMostrar = responseText
         .replace(/ACCION:.*(\r?\n|$)/ig, '')
         .replace(/DATOS:.*(\r?\n|$)/ig, '')
-        .replace(/\*\*/g, '')
-        .replace(/__/g, '')
-        .replace(/#{1,6}\s?/g, '')
         .trim();
 
     return {

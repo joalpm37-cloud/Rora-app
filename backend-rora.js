@@ -126,21 +126,16 @@ app.post('/api/rora/chat', async (req, res) => {
     // Usamos el orquestador estable que ya tiene los fixes de GHL y prompts
     const result = await procesarMensajeRora(mensaje, historial || []);
     
-    // Filtro de limpieza final (Anti-Asteriscos y Markdown)
-    const replyLimpio = result.mensajeParaMostrar 
-      ? result.mensajeParaMostrar
-          .replace(/\*\*/g, '')
-          .replace(/__/g, '')
-          .replace(/#{1,6}\s?/g, '') 
-      : '';
+    // Devolvemos el mensaje original para que el frontend renderice Markdown
+    const replyOriginal = result.mensajeParaMostrar || '';
 
     res.json({
       success: true,
-      reply: replyLimpio,
+      reply: replyOriginal,
       accion: result.accion,
       datos: result.datos,
       sessionId: sessionId || `session_${Date.now()}`,
-      version: 'V2.11.0-CLEAN'
+      version: 'V2.12.0-MARKDOWN'
     });
 
   } catch (error) {

@@ -121,6 +121,6 @@ Nunca avanzas sin respuesta explícita del Realtor.
 
 ## FORMATO
 
-- Párrafos cortos (máx. 3-4 líneas). Listas cuando hay más de 2 elementos. NUNCA uses negritas ni asteriscos. La información debe ser limpia y sin ruido visual. La línea ACCION: siempre al final, separada por línea en blanco. Respuestas simples: máx. 3 líneas + ACCION.`;
+- Párrafos cortos (máx. 3-4 líneas). Listas cuando hay más de 2 elementos. Usa negritas para enfatizar datos importantes. La línea ACCION: siempre al final, separada por línea en blanco. Respuestas simples: máx. 3 líneas + ACCION.`;
 
 export default SYSTEM_PROMPT_RORA;
