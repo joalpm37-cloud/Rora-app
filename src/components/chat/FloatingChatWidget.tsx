@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, X, Send, User, Bot, Loader2, Mic } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -182,6 +181,17 @@ export const FloatingChatWidget: React.FC = () => {
     }
   };
 
+  const renderContent = (content: string) => {
+    if (!content) return '';
+    const parts = content.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i} className="font-bold text-white">{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+  };
+
   return (
     <>
       <button
@@ -229,13 +239,13 @@ export const FloatingChatWidget: React.FC = () => {
                   </div>
                   
                   <div className={cn(
-                    "p-3 rounded-2xl text-sm leading-relaxed overflow-hidden break-words prose prose-invert max-w-none",  
+                    "p-3 rounded-2xl text-sm leading-relaxed overflow-hidden break-words",  
                     msg.sender === 'user' 
                       ? "bg-obsidian-primary text-obsidian-bg rounded-tr-none font-medium" 
                       : "bg-obsidian-card border border-obsidian-border rounded-tl-none text-gray-200"
                   )}>
                     {msg.sender === 'bot' ? (
-                      <ReactMarkdown>{msg.text}</ReactMarkdown>
+                      renderContent(msg.text)
                     ) : (
                       msg.text
                     )}

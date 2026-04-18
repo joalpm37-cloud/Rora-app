@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Bot, Check } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
 
 interface Message {
   id: string;
@@ -168,6 +167,18 @@ export const RoraChat: React.FC = () => {
     }
   };
 
+  const renderContent = (content: string) => {
+    if (!content) return '';
+    // Convertir **texto** a <b>texto</b> de forma segura
+    const parts = content.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i} className="font-bold text-white">{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] md:h-[calc(100vh-4rem)] max-w-4xl mx-auto w-full">
       {/* Header */}
@@ -210,9 +221,9 @@ export const RoraChat: React.FC = () => {
                   : 'bg-[#2A2A2A] text-white rounded-tl-sm border border-obsidian-border'
               }`}
             >
-              <div className="whitespace-pre-wrap leading-relaxed text-sm md:text-base prose prose-invert max-w-none">
+              <div className="whitespace-pre-wrap leading-relaxed text-sm md:text-base">
                 {msg.role === 'rora' ? (
-                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  renderContent(msg.content)
                 ) : (
                   msg.content
                 )}
