@@ -139,7 +139,8 @@ app.post('/api/rora/chat', async (req, res) => {
       reply: replyLimpio,
       accion: result.accion,
       datos: result.datos,
-      sessionId: sessionId || `session_${Date.now()}`
+      sessionId: sessionId || `session_${Date.now()}`,
+      version: 'V2.11.0-CLEAN'
     });
 
   } catch (error) {

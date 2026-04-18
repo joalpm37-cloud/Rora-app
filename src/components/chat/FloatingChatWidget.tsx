@@ -168,7 +168,7 @@ export const FloatingChatWidget: React.FC = () => {
       setMessages(prev => [...prev, {
         id: Date.now().toString() + 'bot',
         sender: 'bot',
-        text: botResponseText
+        text: (botResponseText || '').replace(/\*\*/g, '')
       }]);
     } catch (error) {
        setMessages(prev => [...prev, {

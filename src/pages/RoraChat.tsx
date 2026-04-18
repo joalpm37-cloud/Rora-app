@@ -131,7 +131,7 @@ export const RoraChat: React.FC = () => {
       const roraMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'rora',
-        content: respuesta.mensajeParaMostrar,
+        content: (respuesta.mensajeParaMostrar || '').replace(/\*\*/g, ''),
         accion: respuesta.accion,
         ghlCreated
       };
