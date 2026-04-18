@@ -17,7 +17,12 @@ export async function procesarMensajeRora(mensajeUsuario, historial = []) {
     if (typeof respuestaClaude === 'string') {
         const accionMatch = respuestaClaude.match(/ACCION:\s*(.*)/i);
         const accion = accionMatch ? accionMatch[1].trim() : 'ninguna';
-        const mensajeParaMostrar = respuestaClaude.replace(/ACCION:.*(\r?\n|$)/ig, '').replace(/DATOS:.*(\r?\n|$)/ig, '').trim();
+        // Filtro Anti-Asteriscos
+        const mensajeParaMostrar = respuestaClaude
+            .replace(/ACCION:.*(\r?\n|$)/ig, '')
+            .replace(/DATOS:.*(\r?\n|$)/ig, '')
+            .replace(/\*\*/g, '')
+            .trim();
         return { mensajeParaMostrar, accion, datos: '' };
     }
 
@@ -80,7 +85,12 @@ export async function procesarMensajeRora(mensajeUsuario, historial = []) {
       if (typeof respuestaFinal === 'string') {
         const accionMatch = respuestaFinal.match(/ACCION:\s*(.*)/i);
         const accion = accionMatch ? accionMatch[1].trim() : accionEjecutada;
-        const mensajeParaMostrar = respuestaFinal.replace(/ACCION:.*(\r?\n|$)/ig, '').replace(/DATOS:.*(\r?\n|$)/ig, '').trim();
+        // Filtro Anti-Asteriscos
+        const mensajeParaMostrar = respuestaFinal
+            .replace(/ACCION:.*(\r?\n|$)/ig, '')
+            .replace(/DATOS:.*(\r?\n|$)/ig, '')
+            .replace(/\*\*/g, '')
+            .trim();
         return { mensajeParaMostrar, accion, datos: '' };
       }
     }
@@ -91,7 +101,12 @@ export async function procesarMensajeRora(mensajeUsuario, historial = []) {
     
     const accionMatch = responseText.match(/ACCION:\s*(.*)/i);
     const accion = accionMatch ? accionMatch[1].trim() : 'ninguna';
-    const mensajeParaMostrar = responseText.replace(/ACCION:.*(\r?\n|$)/ig, '').replace(/DATOS:.*(\r?\n|$)/ig, '').trim();
+    // Filtro Anti-Asteriscos
+    const mensajeParaMostrar = responseText
+        .replace(/ACCION:.*(\r?\n|$)/ig, '')
+        .replace(/DATOS:.*(\r?\n|$)/ig, '')
+        .replace(/\*\*/g, '')
+        .trim();
 
     return {
       mensajeParaMostrar,
