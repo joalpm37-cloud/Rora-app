@@ -215,6 +215,7 @@ export const RoraChat: React.FC = () => {
         {messages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.role === 'realtor' ? 'justify-end' : 'justify-start'}`}>
             <div 
+              data-trace="v2.12.1-bold"
               className={`max-w-[85%] md:max-w-[75%] p-4 rounded-2xl ${
                 msg.role === 'realtor' 
                   ? 'bg-[#7F77DD] text-white rounded-tr-sm' 

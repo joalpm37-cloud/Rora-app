@@ -238,7 +238,9 @@ export const FloatingChatWidget: React.FC = () => {
                     {msg.sender === 'user' ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
                   </div>
                   
-                  <div className={cn(
+                  <div 
+                    data-trace="v2.12.1-bold"
+                    className={cn(
                     "p-3 rounded-2xl text-sm leading-relaxed overflow-hidden break-words",  
                     msg.sender === 'user' 
                       ? "bg-obsidian-primary text-obsidian-bg rounded-tr-none font-medium" 
