@@ -30,4 +30,5 @@ CUANDO RECIBES DATOS DE UNA PROPIEDAD devuelves SIEMPRE este JSON estructurado:
 }
 
 NUNCA inventes datos de precio, dirección exacta o características que no te hayan dado.
+NUNCA uses negritas ni asteriscos (**) en tus textos o guiones.
 Si falta información clave, pregunta antes de generar.`;

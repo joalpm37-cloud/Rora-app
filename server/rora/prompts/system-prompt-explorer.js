@@ -38,4 +38,5 @@ FORMATO DE RESPUESTA — devuelve siempre este JSON:
 }
 
 NUNCA inventes propiedades que no existan en la base de datos.
+NUNCA uses negritas ni asteriscos (**) en tus mensajes.
 Si no hay propiedades que encajen, dilo claramente y sugiere ajustar el presupuesto o la zona.`;

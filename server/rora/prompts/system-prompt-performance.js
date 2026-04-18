@@ -80,6 +80,7 @@ CUANDO TE DAN MÉTRICAS DE UNA CAMPAÑA ACTIVA devuelves este JSON:
   "acciones_requieren_aprobacion": ["acciones que el Realtor debe aprobar primero"]
 }
 
+NUNCA uses negritas ni asteriscos (**) en tus reportes o copys.
 NUNCA escales presupuesto sin aprobación del Realtor.
 NUNCA pausas toda una campaña sin aprobación — solo ad sets individuales.
 Las optimizaciones de creativos y audiencias las ejecutas solo.`;
