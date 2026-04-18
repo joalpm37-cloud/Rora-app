@@ -54,10 +54,10 @@ app.post('/api/rora/agents/test', async (req, res) => {
     console.log(`🔗 Llamando a llamarAgenteManaged con Agent:${AGENT_ID} y Env:${envId}`);
     const respuesta = await llamarAgenteManaged(AGENT_ID, mensaje || 'Hola RORA, preséntate como Directora de Orquesta.', envId);
     
-    res.json({ 
-      success: true, 
-      version: 'V2.5.1',
-      agent_id: AGENT_ID,
+    res.json({
+      success: true,
+      version: 'V2.13.0-BOLD',
+      reply: respuesta.mensajeParaMostrar,
       environment_id: envId,
       respuesta 
     });
@@ -69,7 +69,7 @@ app.post('/api/rora/agents/test', async (req, res) => {
 
 // Health check / Test endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'RORA Backend is running (V2.9.0 - Stream Engine)' });
+  res.json({ status: 'ok', version: 'V2.13.0-BOLD', message: 'RORA Backend is live and stable.' });
 });
 
 // NUEVO: Endpoint para inicializar Managed Agents
@@ -97,7 +97,7 @@ app.post('/api/rora/agents/setup', async (req, res) => {
       firebaseSaved,
       message: firebaseSaved 
         ? 'Agente RORA Central activado y guardado en Firebase' 
-        : 'Agente activado en Anthropic, pero falló guardado en Firebase (Usa el agent_id manualmente)'
+        : 'Agente RORA Central activado (Firebase no disponible)'
     });
   } catch (error) {
     console.error('Error configurando agentes:', error);

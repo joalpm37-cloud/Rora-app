@@ -3,7 +3,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { db } from './lib/firebase.js';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { llamarAgenteManaged } from './rora/utils/claude-api.js';
+import { procesarMensajeRora } from './rora/agentes/rora-central.js';
+import { crearContactoGHL } from './rora/utils/ghl-api.js';
 
 dotenv.config();
 
@@ -58,18 +59,23 @@ app.get('/api/test-ghl', async (req, res) => {
 });
 
 app.post('/api/rora/chat', async (req, res) => {
-  const { mensaje, sessionId, systemPrompt, historial, tools } = req.body;
+  const { mensaje, sessionId, historial } = req.body;
 
-  if (!mensaje && !historial) {
-    return res.status(400).json({ error: 'Mensaje o historial es requerido' });
+  if (!mensaje) {
+    return res.status(400).json({ error: 'Mensaje es requerido' });
   }
 
   try {
-    const result = await llamarAgenteManaged(mensaje, sessionId, systemPrompt, historial, tools);
+    console.log('🤖 RORA Orquestador (Vanilla Mode) procesando mensaje...');
+    const result = await procesarMensajeRora(mensaje, historial || []);
+    
     res.json({
       success: true,
-      reply: result.reply,
-      sessionId: result.sessionId
+      reply: result.mensajeParaMostrar || '',
+      accion: result.accion,
+      datos: result.datos,
+      sessionId: sessionId || `session_${Date.now()}`,
+      version: 'V2.13.0-BOLD'
     });
   } catch (error) {
     console.error('Error en /api/rora/chat:', error);
@@ -85,13 +91,15 @@ app.post('/api/rora/chat', async (req, res) => {
 app.post('/api/rora/lead', async (req, res) => {
   const datosLead = req.body;
   try {
+    const contactResult = await crearContactoGHL(datosLead);
     const docRef = await addDoc(collection(db, 'leads'), {
       ...datosLead,
+      ghl_id: contactResult?.contacto?.id || null,
       createdAt: serverTimestamp(),
       status: 'new',
       source: 'ai_backend'
     });
-    res.json({ success: true, id: docRef.id });
+    res.json({ success: true, id: docRef.id, ghlCreated: !!contactResult?.contacto?.id });
   } catch (error) {
     console.error('Error en /api/rora/lead:', error);
     res.status(500).json({ error: 'Error guardando el lead' });
@@ -100,7 +108,7 @@ app.post('/api/rora/lead', async (req, res) => {
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', version: 'V2.10.2', message: 'RORA Backend is live and stable.' });
+  res.json({ status: 'ok', version: 'V2.13.0-BOLD', message: 'RORA Backend is live and stable.' });
 });
 
 app.listen(PORT, () => {
