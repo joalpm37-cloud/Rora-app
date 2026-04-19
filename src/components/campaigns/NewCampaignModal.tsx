@@ -11,6 +11,13 @@ interface NewCampaignModalProps {
   onClose: () => void;
 }
 
+const getApiUrl = (path: string) => {
+  const base = window.location.hostname === 'localhost' 
+    ? 'http://localhost:3001' 
+    : 'https://rora-app.onrender.com';
+  return `${base}${path}`;
+};
+
 export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({ onClose }) => {
   const { user } = useAuth();
   const [step, setStep] = useState(1);
@@ -25,18 +32,23 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({ onClose }) =
     duration: 30,
     property: ''
   });
-
+  
   const generateStrategy = async () => {
     setIsSubmitting(true);
     try {
-      // Dynamic import to avoid issues during build if needed
-      const { crearEstructuraCampana } = await import('../../../rora/agentes/performance-agent');
-      const result = await crearEstructuraCampana({
-        nombrePropiedad: formData.property || formData.name,
-        presupuestoDiario: formData.budget,
-        duracionDias: formData.duration,
-        objetivo: 'leads'
+      const response = await fetch(getApiUrl('/api/agents/performance/campaign/create'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombrePropiedad: formData.property || formData.name,
+          presupuestoDiario: formData.budget,
+          duracionDias: formData.duration,
+          objetivo: 'leads'
+        })
       });
+
+      if (!response.ok) throw new Error('Error al generar estrategia');
+      const result = await response.json();
       setStrategy(result);
       setStep(4);
     } catch (error) {

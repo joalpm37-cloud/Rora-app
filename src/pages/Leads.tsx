@@ -19,7 +19,7 @@ import { Lead } from '../types';
 import { LeadForm } from '../components/leads/LeadForm';
 import { LeadProfile } from '../components/leads/LeadProfile';
 import { handleFirestoreError, OperationType } from '../lib/error-handling';
-import { obtenerContactosGHL } from '../../rora/utils/ghl-api';
+import { fetchGhlContacts } from '../lib/api-client';
 import { RefreshCw, CheckCircle2 } from 'lucide-react';
 
 function cn(...inputs: ClassValue[]) {
@@ -73,7 +73,7 @@ export const Leads: React.FC = () => {
   const handleSyncGHL = async (silent = false) => {
     if (!silent) setIsSyncing(true);
     try {
-      const ghlContacts = await obtenerContactosGHL(100);
+      const ghlContacts = await fetchGhlContacts(100);
       let importedCount = 0;
 
       for (const contact of ghlContacts) {

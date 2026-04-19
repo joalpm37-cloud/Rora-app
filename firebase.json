@@ -8,6 +8,10 @@
     ],
     "rewrites": [
       {
+        "source": "/api/**",
+        "destination": "https://rora-app.onrender.com"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

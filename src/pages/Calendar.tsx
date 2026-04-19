@@ -30,8 +30,12 @@ import { CalendarEvent } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { handleFirestoreError, OperationType } from '../lib/error-handling';
 import { NewEventModal } from '../components/calendar/NewEventModal';
-import { obtenerSlotsCalendario } from '../../rora/utils/ghl-api';
-import { RefreshCw } from 'lucide-react';
+const getApiUrl = (path: string) => {
+  const base = window.location.hostname === 'localhost' 
+    ? 'http://localhost:3001' 
+    : 'https://rora-app.onrender.com';
+  return `${base}${path}`;
+};
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -63,7 +67,8 @@ export const Calendar: React.FC = () => {
     const syncGhl = async () => {
       setIsSyncing(true);
       try {
-        const slots = await obtenerSlotsCalendario();
+        const response = await fetch(getApiUrl('/api/ghl/slots'));
+        const slots = await response.json();
         for (const slot of slots) {
           // Verificar si ya existe por ghl_event_id
           const q = query(collection(db, 'calendarEvents'), where('ghl_event_id', '==', slot.id));

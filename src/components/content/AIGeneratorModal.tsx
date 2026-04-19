@@ -9,14 +9,12 @@ function cn(...inputs: ClassValue[]) {
 
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
-// No podemos importar directamente procesarSolicitudContenido aquí si estamos en entorno de React/Vite de frontend
-// y rora/agentes/content-agent.js es de backend (Node). PERO RORA app usa Vite y asume
-// que los agentes corren en el browser temporalmente (o en backend). 
-// Asumiremos que se puede importar si es "isomorphic", pero claude-api necesita API KEY.
-// Claude-api.js accede a import.meta.env.VITE_CLAUDE_API_KEY o process.env
-// Wait! En el frontend Vite no podemos mandar llamarClaude directamente si no tiene VITE_CLAUDE_API_KEY.
-// Actually the user set it up so we just import the agent directly.
-import { procesarSolicitudContenido } from '../../../rora/agentes/content-agent';
+const getApiUrl = (path: string) => {
+  const base = window.location.hostname === 'localhost' 
+    ? 'http://localhost:3001' 
+    : 'https://rora-app.onrender.com';
+  return `${base}${path}`;
+};
 
 interface AIGeneratorModalProps {
   isOpen: boolean;
@@ -78,7 +76,13 @@ export const AIGeneratorModal: React.FC<AIGeneratorModalProps> = ({ isOpen, onCl
         tipoContenido: "instagram_reel" // Default for generation
       };
       
-      const resultadoJSON = await procesarSolicitudContenido(payloadPropiedad);
+      const response = await fetch(getApiUrl('/api/agents/content/generate'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payloadPropiedad)
+      });
+      
+      const resultadoJSON = await response.json();
       
       if (resultadoJSON) {
         setCaption(resultadoJSON.caption_instagram || resultadoJSON.caption_facebook || "");

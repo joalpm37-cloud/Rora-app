@@ -26,6 +26,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { handleFirestoreError, OperationType } from '../lib/error-handling';
 import { NewCampaignModal } from '../components/campaigns/NewCampaignModal';
 
+const getApiUrl = (path: string) => {
+  const base = window.location.hostname === 'localhost' 
+    ? 'http://localhost:3001' 
+    : 'https://rora-app.onrender.com';
+  return `${base}${path}`;
+};
+
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -70,14 +77,19 @@ export const Campaigns: React.FC = () => {
     setSelectedCampaign(campaign);
     setIsAnalysing(true);
     try {
-      const { analizarCampanaActiva } = await import('../../rora/agentes/performance-agent');
-      // Simulamos métricas si no hay conexión real a Meta
-      const result = await analizarCampanaActiva({
-        cpl: campaign.cpl || 0,
-        ctr: campaign.ctr || 0,
-        leads: campaign.leads || 0,
-        gasto: campaign.spent || 0
+      const response = await fetch(getApiUrl('/api/agents/performance/analyze'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cpl: campaign.cpl || 0,
+          ctr: campaign.ctr || 0,
+          leads: campaign.leads || 0,
+          gasto: campaign.spent || 0
+        })
       });
+
+      if (!response.ok) throw new Error('Error al analizar con IA');
+      const result = await response.json();
       setAnalysis(result);
     } catch (error) {
       console.error("Error analysing campaign:", error);

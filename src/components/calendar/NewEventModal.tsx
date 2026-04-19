@@ -6,7 +6,12 @@ import { useAuth } from '../../contexts/AuthContext';
 import { handleFirestoreError, OperationType } from '../../lib/error-handling';
 import { EventType, CalendarEvent } from '../../types';
 import { MakeIntegration, sendEventToMake } from '../../services/makeIntegration';
-import { crearCitaGHL } from '../../../rora/utils/ghl-api';
+const getApiUrl = (path: string) => {
+  const base = window.location.hostname === 'localhost' 
+    ? 'http://localhost:3001' 
+    : 'https://rora-app.onrender.com';
+  return `${base}${path}`;
+};
 
 interface NewEventModalProps {
   onClose: () => void;
@@ -51,13 +56,17 @@ export const NewEventModal: React.FC<NewEventModalProps> = ({ onClose, selectedD
       // Bidirectional sync with GHL for new events
       if (!event) {
         try {
-          const ghlRes = await crearCitaGHL({
-            title: formData.title,
-            startTime: eventDate.toISOString(),
-            // contactId: could be searched from clientName if needed
+          const response = await fetch(getApiUrl('/api/ghl/appointments/create'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: formData.title,
+              startTime: eventDate.toISOString(),
+            })
           });
+          const ghlRes = await response.json();
           if (ghlRes && ghlRes.id) {
-            ghlEventId = ghlRes.id;
+            ghlId = ghlRes.id; // Using ghlId variable defined at top of try block
           }
         } catch (ghlErr) {
           console.error("GHL integration failed, continuing with Firebase only:", ghlErr);

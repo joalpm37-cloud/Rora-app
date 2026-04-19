@@ -25,9 +25,12 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { procesarMensajeRora } from '../../rora/agentes/rora-central';
-import { buscarConversacionesGHL, obtenerMensajesGHL, enviarMensajeGHL } from '../../rora/utils/ghl-api';
-import { Instagram, MessageCircle, Mail as MailIcon, Smartphone } from 'lucide-react';
+import { 
+  fetchGhlConversations, 
+  fetchGhlMessages, 
+  sendGhlMessage, 
+  sendRoraChat 
+} from '../lib/api-client';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -66,7 +69,8 @@ export const Chats: React.FC = () => {
     const fetchGhlConversations = async () => {
       setIsGhlLoading(true);
       try {
-        const convs = await buscarConversacionesGHL();
+        const response = await fetch(getApiUrl('/api/ghl/conversations'));
+        const convs = await response.json();
         setGhlConversations(convs.map((c: any) => ({
           ...c,
           isGhl: true,
@@ -126,9 +130,14 @@ export const Chats: React.FC = () => {
 
     if (selectedChat.isGhl) {
       const fetchGhlMessages = async () => {
-        const ghlMsgs = await obtenerMensajesGHL(selectedChat.id);
-        setMessages(ghlMsgs); // Já vem formatado da API ghl-api.ts
-        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+        try {
+          const response = await fetch(getApiUrl(`/api/ghl/messages/${selectedChat.id}`));
+          const ghlMsgs = await response.json();
+          setMessages(ghlMsgs);
+          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+        } catch (err) {
+          console.error("Error fetching GHL messages:", err);
+        }
       };
       fetchGhlMessages();
       return;
@@ -168,7 +177,14 @@ export const Chats: React.FC = () => {
 
     if (selectedChat.isGhl) {
       try {
-        await enviarMensajeGHL(selectedChat.id, text);
+        const response = await fetch(getApiUrl('/api/ghl/send'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ conversationId: selectedChat.id, text })
+        });
+
+        if (!response.ok) throw new Error('Error enviando mensaje GHL');
+        
         // Optimistic update
         setMessages(prev => [...prev, {
           id: Date.now().toString(),
@@ -205,13 +221,20 @@ export const Chats: React.FC = () => {
             content: m.text
           }));
 
-        const respuesta = await procesarMensajeRora(text, historial);
+        const response = await fetch(getApiUrl('/api/rora/chat'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mensaje: text, historial })
+        });
+
+        if (!response.ok) throw new Error('Error en la comunicación con RORA');
+        const respuesta = await response.json();
 
         const roraMsg = {
           id: Date.now().toString() + "-rora",
           senderId: 'rora',
           role: 'rora',
-          text: respuesta.mensajeParaMostrar,
+          text: respuesta.reply || respuesta.mensajeParaMostrar,
           accion: respuesta.accion,
           createdAt: new Date()
         };

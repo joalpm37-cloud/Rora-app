@@ -4,7 +4,12 @@ import { collection, query, orderBy, onSnapshot, limit, where, Timestamp, getDoc
 import { db } from '../lib/firebase';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { obtenerContactosGHL } from '../../rora/utils/ghl-api';
+const getApiUrl = (path: string) => {
+  const base = window.location.hostname === 'localhost' 
+    ? 'http://localhost:3001' 
+    : 'https://rora-app.onrender.com';
+  return `${base}${path}`;
+};
 
 import { 
   Users, 
@@ -179,10 +184,9 @@ export const Dashboard: React.FC = () => {
         const leadsSnap = await getDocs(query(collection(db, 'leads'), where('ghl_id', '!=', null)));
         setGhlStats(prev => ({ ...prev, totalRora: leadsSnap.size }));
         
-        // This is a bit heavy but requested
-        const ghlContacts = await obtenerContactosGHL(1); 
-        // Note: obtenerContactosGHL doesn't return total count easily without pagination, 
-        // but I'll use a placeholder or the first page result if meta is available.
+        // This is a bit heavy but requested - using proxy
+        const response = await fetch(getApiUrl('/api/ghl/contacts?limit=1'));
+        const ghlContacts = await response.json();
         setGhlStats(prev => ({ ...prev, totalGhl: '100+' as any })); 
       } catch (e) {
         console.error(e);
@@ -194,8 +198,9 @@ export const Dashboard: React.FC = () => {
   const handleFullSync = async () => {
     setGhlStats(prev => ({ ...prev, isSyncing: true }));
     try {
-      // Execute sync logic (similar to Leads.tsx but centralized)
-      const ghlContacts = await obtenerContactosGHL(100);
+      // Execute sync logic via proxy
+      const response = await fetch(getApiUrl('/api/ghl/contacts?limit=100'));
+      const ghlContacts = await response.json();
       let imported = 0;
       for (const contact of ghlContacts) {
         const q = query(collection(db, 'leads'), where('ghl_id', '==', contact.id));

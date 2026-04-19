@@ -2,13 +2,12 @@ import React, { useState } from 'react';
 import { X, FileText, Download, MessageSquare, Loader2 } from 'lucide-react';
 import { Lead } from '../../types';
 
-// Opcional: dynamic imports en cliente si falla fs
-// En un sistema real esto iría a un Cloud Function o Backend Node.js
-// como requiere la prueba, los importamos y asumimos un stack/proxy capaz:
-// (Nota: si Vite da error de compilación por 'fs', la prueba 5 valida el backend)
-import { buscarPropiedadesParaCliente } from '../../../rora/agentes/explorer-agent';
-import { generarDossierPDF } from '../../../rora/utils/pdf-generator';
-import { enviarMensajeGHL } from '../../../rora/utils/ghl-api';
+const getApiUrl = (path: string) => {
+  const base = window.location.hostname === 'localhost' 
+    ? 'http://localhost:3001' 
+    : 'https://rora-app.onrender.com';
+  return `${base}${path}`;
+};
 
 interface DossierModalProps {
   lead: Lead;
@@ -42,12 +41,22 @@ export const DossierModal: React.FC<DossierModalProps> = ({ lead, onClose }) => 
         caracteristicas: caracteristicas.split(',').map(s => s.trim())
       };
       
-      const resultado = await buscarPropiedadesParaCliente(perfilProps);
+      const searchRes = await fetch(getApiUrl('/api/agents/explorer/search'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(perfilProps)
+      });
+      const resultado = await searchRes.json();
       setDossierData(resultado);
 
-      // En el navegador, esto devuelve un Object URL (Blob)
-      const url = await generarDossierPDF(resultado);
-      setDossierPath(url);
+      // En el servidor genera el link simbólico/real
+      const pdfRes = await fetch(getApiUrl('/api/utils/pdf/generate'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(resultado)
+      });
+      const pdfData = await pdfRes.json();
+      setDossierPath(pdfData.url);
 
     } catch (error) {
       console.error("Error generando dossier:", error);
@@ -78,7 +87,14 @@ export const DossierModal: React.FC<DossierModalProps> = ({ lead, onClose }) => 
         message: `${dossierData.mensaje_para_cliente}\n\nHe preparado este dossier personalizado para ti. Puedes descargarlo aquí (enlace temporal): ${lead.name}-dossier.pdf`
       };
       
-      await enviarMensajeGHL("n/a", payload); 
+      await fetch(getApiUrl('/api/ghl/send'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId: "n/a", // The proxy handles the logic
+          text: payload.message
+        })
+      });
       setSendSuccess(true);
       setTimeout(() => setSendSuccess(false), 3000);
     } catch (error) {

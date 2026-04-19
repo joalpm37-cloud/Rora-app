@@ -6,7 +6,13 @@ import { Lead, LeadStatus, LeadType, LeadSource } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import { handleFirestoreError, OperationType } from '../../lib/error-handling';
 import { MakeIntegration, sendEventToMake } from '../../services/makeIntegration';
-import { buscarContactoGHL, crearContactoGHL } from '../../../rora/utils/ghl-api';
+const getApiUrl = (path: string) => {
+  const base = window.location.hostname === 'localhost' 
+    ? 'http://localhost:3001' 
+    : 'https://rora-app.onrender.com';
+  return `${base}${path}`;
+};
+
 import { CheckCircle2 } from 'lucide-react';
 
 interface LeadFormProps {
@@ -62,13 +68,18 @@ export const LeadForm: React.FC<LeadFormProps> = ({ lead, onClose }) => {
         // Create
         let ghlId = null;
         try {
-          // Paso 1 & 2: Buscar y crear en GHL
-          const ghlRes = await crearContactoGHL({
-            nombre: formData.name,
-            email: formData.email,
-            telefono: formData.phone
+          // Paso 1 & 2: Buscar y crear en GHL vía proxy
+          const response = await fetch(getApiUrl('/api/ghl/contacts/create'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              nombre: formData.name,
+              email: formData.email,
+              telefono: formData.phone
+            })
           });
           
+          const ghlRes = await response.json();
           if (ghlRes && ghlRes.contacto && ghlRes.contacto.id) {
             ghlId = ghlRes.contacto.id;
           }
