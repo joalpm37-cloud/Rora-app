@@ -3,46 +3,60 @@ import SYSTEM_PROMPT_SALES from '../prompts/system-prompt-sales.js';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../lib/firebase.js';
 
-export async function procesarMensajeSalesAgent({ contactId, nombre, canal, mensaje, historial = [] }) {
+export async function procesarMensajeSalesAgent({ contactId, nombre, canal, mensaje, historial = [], isAutomated = false }) {
   try {
-    const contextoConstruido = `Canal: ${canal || "desconocido"}. Nombre del lead: ${nombre || "Prospecto"}.\nMensaje del lead: ${mensaje}`;
+    // 1. CORTOCIRCUITO: Detección de Ecos
+    // Si el mensaje actual es idéntico a la última respuesta del agente, ignoramos.
+    // a. Construye el contexto para Gemini
+    const contextoConstruido = `Canal: ${channel || "desconocido"}. Nombre del lead: ${nombre || "Prospecto"}.\nMensaje del lead: ${mensaje}`;
     
-    const respuestaClaude = await llamarClaude(SYSTEM_PROMPT_SALES, contextoConstruido, historial);
+    // b. Llama a llamarGemini
+    const respuestaGemini = await llamarGemini(SYSTEM_PROMPT_SALES, contextoConstruido, historial);
     
-    if (!respuestaClaude) {
-      throw new Error("Respuesta nula desde Claude API.");
+    if (!respuestaGemini) {
+      throw new Error("Respuesta nula desde Gemini API.");
     }
 
-    const clasificacionMatch = respuestaClaude.match(/CLASIFICACION:\s*(.*)/i);
-    const siguienteMatch = respuestaClaude.match(/SIGUIENTE:\s*(.*)/i);
+    // c. Toma la respuesta de Gemini y extrae los datos clave
+    const clasificacionMatch = respuestaGemini.match(/CLASIFICACION:\s*(.*)/i);
+    const siguienteMatch = respuestaGemini.match(/SIGUIENTE:\s*(.*)/i);
     
     const clasificacion = clasificacionMatch ? clasificacionMatch[1].trim() : "necesita-info";
     const siguientePaso = siguienteMatch ? siguienteMatch[1].trim() : "pedir-mas-info";
     
-    const respuestaLimpia = respuestaClaude
+    const respuestaLimpia = respuestaGemini
       .replace(/CLASIFICACION:.*(\r?\n|$)/ig, '')
       .replace(/SIGUIENTE:.*(\r?\n|$)/ig, '')
       .trim();
 
+    // d. Reconstruir la conversación
+    const now = new Date();
     const conversacionGuardar = [
       ...historial.map(m => ({ 
-        role: m.role === 'user' ? 'lead' : (m.role === 'assistant' ? 'agente' : m.role),
-        content: m.content 
+        sender: m.role === 'user' ? 'lead' : 'agent',
+        text: m.content || m.text,
+        timestamp: now // Aproximado para historial
       })),
-      { role: 'lead', content: mensaje },
-      { role: 'agente', content: respuestaLimpia }
+      { sender: 'lead', text: mensaje, timestamp: now },
+      { sender: 'agent', text: respuestaLimpia, timestamp: new Date() }
     ];
 
+    // e. Intentar guardar en Firebase con Admin
     if (contactId) {
-      const docRef = doc(db, 'sales-conversations', String(contactId));
-      await setDoc(docRef, {
-        contactId,
-        canal: canal || "desconocido",
-        nombre: nombre || "Prospecto",
-        conversacion: conversacionGuardar,
-        clasificacion,
-        ultimaActualizacion: serverTimestamp()
-      }, { merge: true });
+      try {
+        const docRef = dbAdmin.collection('sales-conversations').doc(String(contactId));
+        await docRef.set({
+          contactId,
+          channel: channel || "desconocido",
+          nombre: nombre || "Prospecto",
+          conversacion: conversacionGuardar,
+          clasificacion,
+          ultimaActualizacion: new Date()
+        }, { merge: true });
+        console.log(`✅ Conversación persistida con éxito en Firestore para Lead: ${contactId}`);
+      } catch (fbError) {
+        console.error("❌ Fallo persistencia en Firebase (Admin) en servidor:", fbError.message);
+      }
     }
 
     return {
@@ -52,7 +66,7 @@ export async function procesarMensajeSalesAgent({ contactId, nombre, canal, mens
       contactId
     };
   } catch (error) {
-    console.error("Error procesando mensaje en Sales Agent:", error);
+    console.error("Error procesando mensaje en Sales Agent (Producción):", error);
     return {
       respuesta: "Me estoy reiniciando en este momento, dame unos minutos. 😊",
       clasificacion: "necesita-info",

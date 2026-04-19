@@ -1,6 +1,6 @@
-import { llamarClaude } from '../utils/claude-api';
-import { systemPromptPerformance } from '../prompts/system-prompt-performance';
-import { pausarAdSet, actualizarPresupuesto } from '../utils/meta-api';
+import { llamarGemini } from '../utils/gemini-api.js';
+import { systemPromptPerformance } from '../prompts/system-prompt-performance.js';
+import { pausarAdSet, actualizarPresupuesto } from '../utils/meta-api.js';
 
 export async function crearEstructuraCampana(datosCampana) {
   const { nombrePropiedad, presupuestoDiario, duracionDias, objetivo } = datosCampana;
@@ -16,7 +16,7 @@ Crea la estructura de una campaña en Meta Ads para la siguiente propiedad:
 Por favor devuelve la estructura completa en el formato JSON especificado en tu system prompt.
 `;
 
-    const respuesta = await llamarClaude(systemPromptPerformance, promptUsuario);
+    const respuesta = await llamarGemini(systemPromptPerformance, promptUsuario);
 
     let jsonStr = respuesta;
     if (jsonStr.startsWith("```json")) {
@@ -27,7 +27,7 @@ Por favor devuelve la estructura completa en el formato JSON especificado en tu 
 
     return JSON.parse(jsonStr);
   } catch (error) {
-    console.error("Error al crear estructura de campaña con Claude:", error);
+    console.error("Error al crear estructura de campaña con Gemini:", error.message);
     // Fallback con estructura de ejemplo realista
     return {
       "nombre_campana": `Campaña ${nombrePropiedad || 'Inmobiliaria'}`,
@@ -41,20 +41,12 @@ Por favor devuelve la estructura completa en el formato JSON especificado en tu 
           "presupuesto_porcentaje": 50,
           "targeting": { "intereses": ["Real Estate Investing", "Luxury Real Estate"], "edad": "30-65" },
           "creativos": [{ "titulo": "La casa de tus sueños", "copy_principal": "Descubre esta increíble propiedad...", "cta": "LEARN_MORE", "formato": "imagen" }]
-        },
-        {
-          "nombre": "Retargeting - Visitantes Web",
-          "tipo_audiencia": "retargeting",
-          "presupuesto_porcentaje": 30,
-          "targeting": { "intereses": ["Custom Audiences"], "edad": "30-65" },
-          "creativos": [{ "titulo": "Sé que te gusta", "copy_principal": "Vuelve a ver esta villa exclusiva...", "cta": "CONTACT_US", "formato": "video" }]
         }
       ],
       "kpis_objetivo": {
         "cpl_maximo": 15,
         "ctr_minimo": 2.5,
-        "frecuencia_maxima": 3.5,
-        "leads_estimados": Math.floor((presupuestoDiario * duracionDias) / 12)
+        "frecuencia_maxima": 3.5
       },
       "reglas_optimizacion": ["Si CPL > €25 pausa ad set", "Si CTR < 1.5% cambia creativo"]
     };
@@ -70,7 +62,7 @@ ${JSON.stringify(metricasCampana, null, 2)}
 Devuelve el análisis en el formato JSON especificado en tu system prompt, separando acciones automáticas de las que requieren aprobación.
 `;
 
-    const respuesta = await llamarClaude(systemPromptPerformance, promptUsuario);
+    const respuesta = await llamarGemini(systemPromptPerformance, promptUsuario);
 
     let jsonStr = respuesta;
     if (jsonStr.startsWith("```json")) {
@@ -79,11 +71,11 @@ Devuelve el análisis en el formato JSON especificado en tu system prompt, separ
     
     return JSON.parse(jsonStr);
   } catch (error) {
-    console.error("Error al analizar campaña:", error);
+    console.error("Error al analizar campaña:", error.message);
     return {
       "estado_general": "atención",
       "metricas_actuales": metricasCampana,
-      "alertas": [{ "nivel": "info", "problema": "Claude no pudo procesar los datos", "accion_inmediata": "Revisar panel de Meta manualmente" }],
+      "alertas": [{ "nivel": "info", "problema": "IA no pudo procesar los datos", "accion_inmediata": "Revisar panel de Meta manualmente" }],
       "acciones_automaticas": [],
       "acciones_requieren_aprobacion": []
     };

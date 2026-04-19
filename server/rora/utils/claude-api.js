@@ -14,12 +14,18 @@ const getEnv = (name) => {
  * Eliminamos TODAS las dependencias de betas y modelos experimentales.
  * Usamos el estándar de oro de Anthropic para garantizar que tus créditos funcionen.
  */
-export async function llamarAgenteManaged(mensajeUsuario, sessionId = null, systemPrompt = null, historial = [], tools = null) {
-  console.log(`📡 [V2.10.2] Rora Vanilla Sync: "${mensajeUsuario}"`);
+export async function llamarAgenteManaged(mensajeUsuario, sessionId = null, systemPrompt = null, historial = [], tools = null, isAutomated = false) {
+  console.log(`📡 [V2.10.2] Rora ${isAutomated ? 'Auto' : 'Sync'}: "${mensajeUsuario}"`);
   
   try {
+    // Si es automatizado (Webhook), forzamos Haiku para ahorrar créditos.
+    // Si no, usamos el modelo de la variable de entorno o Haiku como fallback.
+    const modelToUse = isAutomated 
+      ? 'claude-haiku-4-5-20251001' 
+      : (getEnv('CLAUDE_MODEL') || 'claude-haiku-4-5-20251001');
+
     const requestBody = {
-      model: getEnv('CLAUDE_MODEL') || 'claude-haiku-4-5-20251001',
+      model: modelToUse,
       max_tokens: 1536,
       system: [
         {
@@ -110,5 +116,5 @@ export async function llamarAgenteManaged(mensajeUsuario, sessionId = null, syst
 
 // Compatibilidad con versiones previas
 export const llamarRoraPrime = (u, h, s) => llamarAgenteManaged(u, s);
-export const llamarClaude = (sys, u, h, t) => llamarAgenteManaged(u, null, sys, h, t);
+export const llamarClaude = (sys, u, h, t, isAutomated) => llamarAgenteManaged(u, null, sys, h, t, isAutomated);
 export const crearAgenteManaged = (n, s, t) => { return { id: "VANILLA_STABLE_V2.10.2" }; };

@@ -138,11 +138,17 @@ export async function buscarConversacionesGHL() {
 }
 
 export async function obtenerMensajesGHL(conversationId) {
-  const args = { conversationId };
+  const args = { conversationId, limit: 20 };
   const resultado = await ejecutarHerramientaMCP("conversations_get-messages", args);
   
   if (resultado && resultado.data && resultado.data.messages) {
-      return resultado.data.messages;
+      // Mapear al formato esperado por la UI central
+      return resultado.data.messages.map(m => ({
+          id: m.id,
+          text: m.body || "",
+          sender: m.direction === 'inbound' ? 'lead' : 'agent',
+          timestamp: new Date(m.dateAdded)
+      })).reverse(); // Orden cronológico (más viejo a más reciente)
   }
   return [];
 }

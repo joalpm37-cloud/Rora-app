@@ -74,7 +74,7 @@ export const Chats: React.FC = () => {
           nombre: c.contactName || 'Lead GHL',
           lastMessage: c.lastMessageBody || 'Sin mensajes',
           updatedAt: c.lastMessageDate ? new Date(c.lastMessageDate) : new Date(),
-          canal: c.type || 'SMS'
+          channel: (c.type || 'SMS').toLowerCase()
         })));
       } catch (err) {
         console.error("Error fetching GHL conversations:", err);
@@ -127,13 +127,7 @@ export const Chats: React.FC = () => {
     if (selectedChat.isGhl) {
       const fetchGhlMessages = async () => {
         const ghlMsgs = await obtenerMensajesGHL(selectedChat.id);
-        setMessages(ghlMsgs.map((m: any) => ({
-          id: m.id,
-          text: m.body,
-          senderId: m.direction === 'inbound' ? selectedChat.contactId : user?.uid,
-          createdAt: new Date(m.dateAdded),
-          isGhl: true
-        })));
+        setMessages(ghlMsgs); // Já vem formatado da API ghl-api.ts
         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
       };
       fetchGhlMessages();
@@ -148,9 +142,9 @@ export const Chats: React.FC = () => {
           const msgs = data.conversacion.map((c: any, i: number) => ({
             id: `msg-${i}`,
             conversationId: selectedChat.id,
-            senderId: c.role === 'agente' ? (user?.uid || 'agent') : selectedChat.id,
-            text: c.content,
-            createdAt: data.ultimaActualizacion
+            sender: c.sender || (c.role === 'agente' ? 'agent' : 'lead'),
+            text: c.text || c.content,
+            timestamp: c.timestamp || data.ultimaActualizacion
           }));
           setMessages(msgs);
         } else {
@@ -179,8 +173,8 @@ export const Chats: React.FC = () => {
         setMessages(prev => [...prev, {
           id: Date.now().toString(),
           text: text,
-          senderId: user.uid,
-          createdAt: new Date(),
+          sender: 'agent',
+          timestamp: new Date(),
           isGhl: true
         }]);
         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
@@ -295,11 +289,11 @@ export const Chats: React.FC = () => {
     }
   };
 
-  const getChannelIcon = (type: string) => {
-    const t = type?.toLowerCase();
-    if (t?.includes('whatsapp')) return <MessageCircle className="w-3 h-3" />;
-    if (t?.includes('instagram')) return <Instagram className="w-3 h-3" />;
-    if (t?.includes('email')) return <MailIcon className="w-3 h-3" />;
+  const getChannelIcon = (channel: string) => {
+    const c = channel?.toLowerCase();
+    if (c === 'whatsapp') return <MessageCircle className="w-4 h-4 text-[#25D366]" />;
+    if (c === 'instagram') return <Instagram className="w-4 h-4 text-[#E4405F]" />;
+    if (c === 'email') return <MailIcon className="w-3 h-3" />;
     return <Smartphone className="w-3 h-3" />;
   };
 
@@ -372,7 +366,7 @@ export const Chats: React.FC = () => {
                     </p>
                     {chat.isGhl && (
                       <div className="text-obsidian-muted flex items-center gap-1 ml-2">
-                        {getChannelIcon(chat.canal)}
+                        {getChannelIcon(chat.channel || chat.canal)}
                       </div>
                     )}
                   </div>
@@ -415,7 +409,8 @@ export const Chats: React.FC = () => {
 
             <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
               {displayMessages.map((msg, idx) => {
-                const isMine = selectedChat.id === RORA_CHAT_ID ? msg.role === 'realtor' : (msg.senderId === user?.uid);
+                const isAgent = msg.sender === 'agent' || msg.role === 'rora' || msg.role === 'agente';
+                const isMine = isAgent;
                 const isRoraMsg = msg.role === 'rora';
 
                 return (

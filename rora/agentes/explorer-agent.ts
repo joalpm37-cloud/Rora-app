@@ -1,7 +1,7 @@
-import { llamarClaude } from '../utils/claude-api';
-import { systemPromptExplorer } from '../prompts/system-prompt-explorer';
+import { llamarGemini } from '../utils/gemini-api.js';
+import { systemPromptExplorer } from '../prompts/system-prompt-explorer.js';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../../src/lib/firebase';
+import { db } from '../../src/lib/firebase.js';
 
 export async function buscarPropiedadesParaCliente(datosCliente) {
   const { nombreCliente, presupuestoMax, zonaPreferida, habitacionesMin, caracteristicas } = datosCliente;
@@ -9,13 +9,11 @@ export async function buscarPropiedadesParaCliente(datosCliente) {
   try {
     // Paso 1: Traer propiedades disponibles
     const propiedadesRef = collection(db, 'propiedades');
-    // Si quisieramos filtrar por estado activa... asumiendo que "estado" existe en el doc
     const q = query(propiedadesRef, where("estado", "==", "activa"));
     let snap;
     try {
         snap = await getDocs(q);
     } catch (e) {
-        // Fallback en caso de que no haya índice compuesto o falle el where
         snap = await getDocs(propiedadesRef);
     }
     
@@ -36,8 +34,8 @@ ${JSON.stringify(propiedadesDisponibles, null, 2)}
 Por favor elabora el dossier siguiendo el formato JSON especificado.
 `;
 
-    // Paso 3: Llama a Claude
-    const respuesta = await llamarClaude(systemPromptExplorer, promptUsuario);
+    // Paso 3: Llama a Gemini
+    const respuesta = await llamarGemini(systemPromptExplorer, promptUsuario);
 
     // Paso 4: Parsea JSON
     let jsonStr = respuesta;
@@ -49,7 +47,7 @@ Por favor elabora el dossier siguiendo el formato JSON especificado.
 
     return JSON.parse(jsonStr);
   } catch (error) {
-    console.warn("Fallo al contactar con Claude o parsear. Filtro manual fallback activado.", error);
+    console.warn("Fallo al contactar con Gemini o parsear. Filtro manual fallback activado.", error.message);
     
     // Fallback manual sin IA
     let props = [];
@@ -64,12 +62,6 @@ Por favor elabora el dossier siguiendo el formato JSON especificado.
         const pres = Number(presupuestoMax || 0);
         if (pres > 0 && precioProp > pres) return false;
         
-        // basic zone check
-        if (zonaPreferida && p.zona) {
-           if (!p.zona.toLowerCase().includes(zonaPreferida.toLowerCase())) {
-             // For fallback, we'll let it slide or loosely match
-           }
-        }
         return true;
     }).slice(0, 5);
 
@@ -86,12 +78,12 @@ Por favor elabora el dossier siguiendo el formato JSON especificado.
         "ubicacion": p.zona || p.location || "Ubicación desconocida",
         "precio": p.precio || p.price || 0,
         "compatibilidad": 85,
-        "razon_compatibilidad": "Encaja dentro del presupuesto según nuestra base de datos.",
+        "razon_compatibilidad": "Encaja dentro del presupuesto.",
         "caracteristicas": p.caracteristicas || [],
         "url_imagen": p.imagen || p.image || null,
         "precio_minimo_aceptado": p.precio_minimo || null
       })),
-      "mensaje_para_cliente": `Hola ${nombreCliente}, he revisado nuestra cartera de propiedades disponibles y he seleccionado las mejores opciones que se ajustan a tu presupuesto y requisitos. Échales un vistazo y seguimos hablando.`
+      "mensaje_para_cliente": `Hola ${nombreCliente}, he seleccionado las mejores opciones que se ajustan a tu presupuesto y requisitos.`
     };
   }
 }

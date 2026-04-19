@@ -91,6 +91,22 @@ async function callGHLMCP(toolName, toolArgs) {
 }
 
 // DISPATCHER: Mapea las llamadas del agente al Hub MCP
+export async function obtenerMensajesGHL(conversationId) {
+  const args = { conversationId, limit: 20 };
+  const resultado = await callGHLMCP("conversations_get-messages", args);
+  
+  if (resultado && resultado.data && resultado.data.messages) {
+      // Mapear al formato esperado por la UI central (Producción)
+      return resultado.data.messages.map(m => ({
+          id: m.id,
+          text: m.body || "",
+          sender: m.direction === 'inbound' ? 'lead' : 'agent',
+          timestamp: new Date(m.dateAdded)
+      })).reverse(); 
+  }
+  return [];
+}
+
 export async function executeGHLAction(action, args) {
   console.log(`📡 Dispatching MCP Action: ${action}`);
   

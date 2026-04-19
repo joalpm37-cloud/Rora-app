@@ -1,5 +1,5 @@
-import { llamarClaude } from '../utils/claude-api';
-import { systemPromptContent } from '../prompts/system-prompt-content';
+import { llamarGemini } from '../utils/gemini-api.js';
+import { systemPromptContent } from '../prompts/system-prompt-content.js';
 
 export async function procesarSolicitudContenido(datosPropiedad) {
   const { nombre, ubicacion, precio, habitaciones, banos, metros, caracteristicas, tipoContenido } = datosPropiedad;
@@ -20,7 +20,7 @@ Recuerda devolver SOLAMENTE el JSON con la estructura solicitada, sin formato ma
 `;
 
   try {
-    const respuesta = await llamarClaude(
+    const respuesta = await llamarGemini(
       systemPromptContent,
       promptUsuario
     );
@@ -35,7 +35,7 @@ Recuerda devolver SOLAMENTE el JSON con la estructura solicitada, sin formato ma
     const resultadoParseado = JSON.parse(jsonStr);
     return resultadoParseado;
   } catch (error) {
-    console.warn("Fallo al contactar con Claude o al parsear la respuesta. Devolviendo fallback del Content Agent.", error);
+    console.warn("Fallo al contactar con Gemini o al parsear la respuesta. Devolviendo fallback del Content Agent.", error.message);
     return {
       "guion_60s": `(Gancho visual: Vista aérea desde el dron entrando por la terraza hacia la piscina infinita)\\n¿Te imaginas despertar cada mañana con el Mediterráneo a tus pies?\\n(Recorrido: Cámara flota desde la cocina abierta hacia el salón bañado de luz natural)\\nBienvenido a ${nombre || 'esta joya inmobiliaria'}, en el corazón de ${ubicacion || 'la mejor zona'}. Un refugio de lujo donde el diseño moderno se funde con el horizonte.\\n(Características: Detalles de la suite principal y los acabados en piedra natural)\\nCon ${habitaciones || 'amplias'} suites, ${banos || 'exquisitos'} baños y un inigualable nivel de privacidad, cada rincón está pensado para el máximo confort.\\n(Llamada a la acción: Planos del exterior al atardecer)\\nTu nueva vida te espera. Comenta 'QUIERO VERLA' o envíanos un mensaje directo para agendar una visita privada.`,
       "caption_instagram": `💎 Eleva tu estilo de vida en ${ubicacion || 'la ubicación más exclusiva'}.\\n\\nDescubre ${nombre || 'esta obra maestra'}, un santuario de diseño moderno donde el lujo y la tranquilidad se encuentran ✨.\\n\\nDetalles de la propiedad:\\n🛏️ ${habitaciones || '-'} Habitaciones de lujo\\n🛁 ${banos || '-'} Baños con acabados premium\\n📏 ${metros || '-'} m² de diseño excepcional\\n\\n${caracteristicas || 'Disfruta de espacios amplios, luz natural y vistas inigualables'}. Todo esto por ${precio || 'un precio inmejorable'}.\\n\\n¿Deseas conocer más detalles? 📩 Envíanos un DM con la palabra "LUJO" o comenta abajo para recibir el dossier completo.\\n\\n#BienesRaicesLujo #InmobiliariaPremium #VidaDeLujo`,

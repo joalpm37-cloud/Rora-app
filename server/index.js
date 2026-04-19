@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { db } from './lib/firebase.js';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { procesarMensajeRora } from './rora/agentes/rora-central.js';
+import { procesarMensajeSalesAgent } from './rora/agentes/sales-agent.js';
 import { crearContactoGHL } from './rora/utils/ghl-api.js';
 
 dotenv.config();
@@ -11,104 +12,70 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-app.use(cors()); // Permisivo temporalmente para diagnóstico
+app.use(cors()); 
 app.use(express.json());
 
-// TEST Endpoint: Probar conexión con Claude (Sin entornos complejos)
-app.post('/api/rora/agents/test', async (req, res) => {
-  const { mensaje } = req.body;
-  console.log('🤖 Realizando prueba de conexión Rora Vanilla...');
-  
-  try {
-    const result = await llamarAgenteManaged(mensaje || 'Hola RORA, confirma conexión.');
-    res.json({ 
-      success: true, 
-      version: 'V2.10.2',
-      reply: result.reply,
-      sessionId: result.sessionId
-    });
-  } catch (error) {
-    console.error('❌ Error en prueba de conexión:', error.message);
-    res.status(500).json({ error: error.message });
-  }
-});
+// --- ENDPOINTS DE AGENTE DE VENTAS (WEBHOOK GHL) ---
 
-// Main Chat Endpoint
-// Endpoint de diagnóstico para verificar el estado de las llaves (oculto/admin)
-app.get('/api/diag', (req, res) => {
-  const mask = (val) => val ? `${val.substring(0, 4)}...${val.substring(val.length - 4)}` : 'MISSING';
-  res.json({
-    status: 'online',
-    config: {
-      GHL_PIT_TOKEN: mask(process.env.GHL_PIT_TOKEN || process.env.VITE_GHL_PIT_TOKEN),
-      GHL_LOCATION_ID: mask(process.env.GHL_LOCATION_ID || process.env.VITE_GHL_LOCATION_ID),
-      ANTHROPIC_API_KEY: mask(process.env.ANTHROPIC_API_KEY)
+app.post('/api/sales-agent/mensaje', async (req, res) => {
+  try {
+    const { contactId, nombre, telefono, canal, mensaje, historial, type, source, direction } = req.body;
+    
+    // Identificación dinámica del canal (WA/IG)
+    const normalizedChannel = (type || source || canal || 'sms').toLowerCase();
+    const finalChannel = normalizedChannel.includes('whatsapp') ? 'whatsapp' : 
+                         normalizedChannel.includes('instagram') ? 'instagram' : 'sms';
+    
+    // Filtro: Solo inbound
+    if (direction && direction !== 'inbound') {
+      return res.json({ success: true, message: 'Mensaje saliente ignorado' });
     }
-  });
-});
 
-// Endpoint de test directo para GHL
-app.get('/api/test-ghl', async (req, res) => {
-  try {
-    const query = req.query.query || 'Joseph';
-    const result = await ghl.executeGHLAction('contacts_get-contacts', { query });
-    res.json({ success: true, result });
+    console.log(`📥 [Prod] Procesando mensaje de ${nombre || contactId} canal: ${finalChannel}`);
+
+    const resultado = await procesarMensajeSalesAgent({
+      contactId,
+      nombre,
+      telefono,
+      channel: finalChannel,
+      mensaje,
+      historial: historial || []
+    });
+
+    res.json(resultado);
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error('❌ Error en webhook:', error);
+    res.status(500).json({ error: 'Error interno en el servidor' });
   }
 });
+
+// --- ENDPOINTS DE ORQUESTADOR RORA ---
 
 app.post('/api/rora/chat', async (req, res) => {
   const { mensaje, sessionId, historial } = req.body;
-
-  if (!mensaje) {
-    return res.status(400).json({ error: 'Mensaje es requerido' });
-  }
+  if (!mensaje) return res.status(400).json({ error: 'Mensaje es requerido' });
 
   try {
-    console.log('🤖 RORA Orquestador (Vanilla Mode) procesando mensaje...');
+    console.log('🤖 RORA Orquestador (Prod) procesando...');
     const result = await procesarMensajeRora(mensaje, historial || []);
-    
     res.json({
       success: true,
       reply: result.mensajeParaMostrar || '',
       accion: result.accion,
       datos: result.datos,
       sessionId: sessionId || `session_${Date.now()}`,
-      version: 'V2.13.0-BOLD'
+      version: 'V3.0.0-FLASH'
     });
   } catch (error) {
     console.error('Error en /api/rora/chat:', error);
-    res.status(500).json({ 
-      error: 'Error procesando el mensaje',
-      success: false,
-      reply: 'RORA está afinando la orquesta tecnológica. Reintenta en un momento.' 
-    });
+    res.status(500).json({ error: 'Error procesando el mensaje', success: false });
   }
 });
 
-// Lead Endpoint
-app.post('/api/rora/lead', async (req, res) => {
-  const datosLead = req.body;
-  try {
-    const contactResult = await crearContactoGHL(datosLead);
-    const docRef = await addDoc(collection(db, 'leads'), {
-      ...datosLead,
-      ghl_id: contactResult?.contacto?.id || null,
-      createdAt: serverTimestamp(),
-      status: 'new',
-      source: 'ai_backend'
-    });
-    res.json({ success: true, id: docRef.id, ghlCreated: !!contactResult?.contacto?.id });
-  } catch (error) {
-    console.error('Error en /api/rora/lead:', error);
-    res.status(500).json({ error: 'Error guardando el lead' });
-  }
-});
+// --- DIAGNÓSTICO Y SALUD ---
 
-// Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', version: 'V2.13.0-BOLD', message: 'RORA Backend is live and stable.' });
+  res.json({ status: 'ok', version: 'V3.0.0-FLASH', message: 'RORA Backend is live and stable.' });
 });
 
 app.listen(PORT, () => {
