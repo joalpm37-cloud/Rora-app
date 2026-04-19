@@ -18,13 +18,21 @@ export async function procesarMensajeSalesAgent({ contactId, nombre, channel, me
     // c. Toma la respuesta de Gemini y extrae los datos clave
     const clasificacionMatch = respuestaGemini.match(/CLASIFICACION:\s*(.*)/i);
     const siguienteMatch = respuestaGemini.match(/SIGUIENTE:\s*(.*)/i);
+    const bantMatch = respuestaGemini.match(/ANALISIS_BANT:\s*({.*})/i);
     
-    const clasificacion = clasificacionMatch ? clasificacionMatch[1].trim() : "necesita-info";
+    const clasificacion = clasificacionMatch ? clasificacionMatch[1].trim().toLowerCase() : "necesita-info";
     const siguientePaso = siguienteMatch ? siguienteMatch[1].trim() : "pedir-mas-info";
+    let bantData = null;
+    try {
+      if (bantMatch) bantData = JSON.parse(bantMatch[1]);
+    } catch (e) {
+      console.warn("⚠️ Error parseando BANT JSON:", e.message);
+    }
     
     const respuestaLimpia = respuestaGemini
       .replace(/CLASIFICACION:.*(\r?\n|$)/ig, '')
       .replace(/SIGUIENTE:.*(\r?\n|$)/ig, '')
+      .replace(/ANALISIS_BANT:.*(\r?\n|$)/ig, '')
       .trim();
 
     // d. Reconstruir la conversación
@@ -33,25 +41,37 @@ export async function procesarMensajeSalesAgent({ contactId, nombre, channel, me
       ...historial.map(m => ({ 
         sender: m.role === 'user' ? 'lead' : 'agent',
         text: m.content,
-        timestamp: now // Aproximado para historial
+        timestamp: now
       })),
       { sender: 'lead', text: mensaje, timestamp: now },
       { sender: 'agent', text: respuestaLimpia, timestamp: new Date() }
     ];
 
-    // e. Intentar guardar en Firebase (el test manejará el error si no hay admin aún)
+    // e. Intentar guardar en Firebase (Admin)
     if (contactId) {
       try {
-        const docRef = dbAdmin.collection('sales-conversations').doc(String(contactId));
-        await docRef.set({
+        // Guardar conversación
+        const convRef = dbAdmin.collection('sales-conversations').doc(String(contactId));
+        await convRef.set({
           contactId,
           channel: channel || "desconocido",
           nombre: nombre || "Prospecto",
           conversacion: conversacionGuardar,
           clasificacion,
+          bant: bantData,
           ultimaActualizacion: new Date()
         }, { merge: true });
-        console.log(`✅ Conversación persistida con éxito en Firestore para Lead: ${contactId}`);
+
+        // Sincronizar con el Lead Profile para el Dashboard
+        const leadRef = dbAdmin.collection('leads').doc(String(contactId));
+        await leadRef.set({
+          bant: bantData,
+          status: clasificacion === 'calificado' ? 'Calificado' : 'En seguimiento',
+          lastInteraction: new Date(),
+          qualifiedAlert: clasificacion === 'calificado' // Trigger para el toast
+        }, { merge: true });
+
+        console.log(`✅ Lead Profile & BANT actualizado para: ${contactId}`);
       } catch (fbError) {
         console.error("❌ Fallo persistencia en Firebase (Admin):", fbError.message);
       }
@@ -61,6 +81,7 @@ export async function procesarMensajeSalesAgent({ contactId, nombre, channel, me
       respuesta: respuestaLimpia,
       clasificacion,
       siguientePaso,
+      bant: bantData,
       contactId
     };
   } catch (error) {

@@ -431,6 +431,7 @@ export const Chats: React.FC = () => {
             </header>
 
             <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
               {displayMessages.map((msg, idx) => {
                 const isAgent = msg.sender === 'agent' || msg.role === 'rora' || msg.role === 'agente';
                 const isMine = isAgent;
@@ -485,28 +486,11 @@ export const Chats: React.FC = () => {
               <div ref={messagesEndRef} />
             </div>
 
-            <footer className="p-4 bg-obsidian-card border-t border-obsidian-border">
-              <form onSubmit={handleSendMessage} className="flex items-center gap-2 md:gap-4 bg-obsidian-bg border border-obsidian-border rounded-2xl px-3 md:px-4 py-2 hover:border-obsidian-primary/50 transition-colors focus-within:border-obsidian-primary">
-                <Paperclip className="w-5 h-5 text-obsidian-muted cursor-pointer hover:text-white transition-colors shrink-0" />
-                <input
-                  type="text"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Escribe un mensaje..."
-                  className="flex-1 bg-transparent text-sm outline-none py-2 min-w-0 disabled:opacity-50"
-                  disabled={isTyping}
-                />
-                <div className="flex items-center gap-2 md:gap-3 shrink-0">
-                  <Smile className="w-5 h-5 text-obsidian-muted cursor-pointer hover:text-white transition-colors hidden md:block" />
-                  <button
-                    type="submit"
-                    disabled={!newMessage.trim() || isTyping}
-                    className="w-8 h-8 bg-obsidian-primary text-obsidian-bg rounded-xl flex items-center justify-center hover:opacity-90 transition-opacity disabled:opacity-50"
-                  >
-                    <Send className="w-4 h-4" />
-                  </button>
-                </div>
-              </form>
+            <footer className="p-4 bg-obsidian-card/50 border-t border-obsidian-border flex items-center justify-center">
+              <p className="text-xs text-obsidian-muted font-medium flex items-center gap-2">
+                <Bot className="w-3.5 h-3.5" />
+                Modo Monitor: Lira está gestionando esta conversación en GHL.
+              </p>
             </footer>
           </>
         ) : (

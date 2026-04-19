@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, MessageSquare, ExternalLink, Settings, Edit2, FileText } from 'lucide-react';
+import { X, Calendar, ExternalLink, Settings, Edit2, FileText, Bell, MapPin, Target } from 'lucide-react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { Lead } from '../../types';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { BantAnalysis } from './BantAnalysis';
+import { ActivityTimeline } from './ActivityTimeline';
+import { AgentActionCard } from './AgentActionCard';
 import { DossierModal } from './DossierModal';
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+import { sendGhlMessage } from '../../lib/api-client';
+import { updateDoc, arrayUnion } from 'firebase/firestore';
 
 interface LeadProfileProps {
   lead: Lead;
@@ -18,180 +17,180 @@ interface LeadProfileProps {
 }
 
 export const LeadProfile: React.FC<LeadProfileProps> = ({ lead, onClose, onEdit }) => {
-  const [salesHistory, setSalesHistory] = useState<any[]>([]);
-  const [propertiesViewed, setPropertiesViewed] = useState<any[]>([]);
+  const [salesData, setSalesData] = useState<any>(null);
   const [showDossier, setShowDossier] = useState(false);
+  const [events, setEvents] = useState<any[]>([]);
 
   useEffect(() => {
     if (!lead?.id) return;
     
-    // Fetch sales conversations from 'sales-conversations' collection
     const docRef = doc(db, 'sales-conversations', lead.id);
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
-        if (data.conversacion && Array.isArray(data.conversacion)) {
-          setSalesHistory(data.conversacion);
+        setSalesData(data);
+        
+        // Mapear conversación + eventos de sistema a la Timeline
+        const msgEvents = (data.conversacion || []).map((m: any, i: number) => ({
+          id: `msg-${i}`,
+          type: 'message',
+          sender: m.sender || (m.role === 'agente' ? 'agent' : 'lead'),
+          text: m.text || m.content,
+          timestamp: m.timestamp?.toDate ? m.timestamp.toDate() : new Date(),
+        }));
+
+        // Simulación de eventos de sistema para demo de Phase 2
+        const systemEvents = [];
+        if (data.clasificacion === 'calificado') {
+          systemEvents.push({
+            id: 'alert-qualified',
+            type: 'system',
+            sender: 'system',
+            text: '¡Lira ha calificado a este lead! Oportunidad detectada.',
+            timestamp: data.ultimaActualizacion?.toDate ? data.ultimaActualizacion.toDate() : new Date(),
+            status: 'alert'
+          });
         }
-      } else {
-        setSalesHistory([]);
+
+        setEvents([...msgEvents, ...systemEvents].sort((a, b) => b.timestamp - a.timestamp));
       }
     });
 
     return () => unsubscribe();
   }, [lead.id]);
 
-  const scoreColor = lead.score > 70 ? "bg-emerald-500" : lead.score >= 40 ? "bg-amber-500" : "bg-rose-500";
-  const scoreTextColor = lead.score > 70 ? "text-emerald-500" : lead.score >= 40 ? "text-amber-500" : "text-rose-500";
+  const handleApproveAtlas = async (propData: any) => {
+    if (!lead?.id) return;
+    try {
+      const message = `¡Hola! Atlas ha encontrado una propiedad que encaja perfectamente con tus requisitos: ${propData.nombre} en ${propData.ubicacion} por €${propData.precio}. ¿Te gustaría ver más detalles?`;
+      
+      // 1. Enviar a GHL
+      await sendGhlMessage(lead.id, message);
+      
+      // 2. Registrar en Firebase (Activity Feed)
+      const docRef = doc(db, 'sales-conversations', lead.id);
+      await updateDoc(docRef, {
+        conversacion: arrayUnion({
+          sender: 'agent',
+          text: `[Atlas Approved] ${message}`,
+          timestamp: new Date()
+        }),
+        ultimaActualizacion: new Date()
+      });
+
+      console.log("✅ Propiedad de Atlas aprobada y enviada.");
+    } catch (err) {
+      console.error("❌ Error aprobando Atlas:", err);
+    }
+  };
 
   return (
-    <div className="fixed inset-y-0 right-0 z-[100] w-full md:w-[480px] bg-obsidian-bg border-l border-obsidian-border shadow-2xl flex flex-col transform transition-transform duration-300">
+    <div className="fixed inset-y-0 right-0 z-[100] w-full md:w-[600px] bg-obsidian-bg border-l border-obsidian-border shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
       
-      {/* Header con X para cerrar (Estilo PropertyDetails) */}
-      <div className="flex items-center justify-between p-6 border-b border-obsidian-border bg-white/5 shrink-0">
-        <h2 className="text-xl font-bold">Detalles del Contacto</h2>
+      {/* Header Premium con Alertas de Calificación */}
+      <div className="flex items-center justify-between p-6 border-b border-obsidian-border bg-white/5 relative overflow-hidden shrink-0">
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-obsidian-primary/40 to-blue-500/40 border border-white/10 flex items-center justify-center text-2xl font-bold uppercase shadow-inner">
+              {lead.name.substring(0, 2)}
+            </div>
+            {lead.status === 'Calificado' && (
+              <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-4 border-obsidian-bg animate-pulse shadow-lg shadow-emerald-500/50" />
+            )}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-bold">{lead.name}</h2>
+              {lead.status === 'Calificado' && (
+                <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 text-[9px] font-bold rounded-lg uppercase tracking-widest flex items-center gap-1">
+                  <Bell className="w-2.5 h-2.5" />
+                  Calificado
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-3 mt-1 text-obsidian-muted">
+              <span className="text-xs flex items-center gap-1">
+                <MapPin className="w-3 h-3 text-obsidian-primary" />
+                {lead.zone || 'Zona por definir'}
+              </span>
+              <span className="w-1.5 h-1.5 bg-obsidian-border rounded-full" />
+              <span className="text-xs uppercase font-bold tracking-widest text-emerald-500/80">
+                Score: {lead.score}
+              </span>
+            </div>
+          </div>
+        </div>
+        
         <div className="flex items-center gap-2">
-          <button onClick={() => onEdit(lead)} className="p-2 hover:bg-white/10 rounded-lg transition-colors text-obsidian-muted hover:text-white">
-            <Edit2 className="w-5 h-5" />
+          <button onClick={() => onEdit(lead)} className="p-2.5 hover:bg-white/10 rounded-xl transition-colors text-obsidian-muted hover:text-white border border-white/5">
+            <Edit2 className="w-4 h-4" />
           </button>
-          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg transition-colors text-obsidian-muted hover:text-white">
+          <button onClick={onClose} className="p-2.5 hover:bg-white/10 rounded-xl transition-colors text-obsidian-muted hover:text-white border border-white/5">
             <X className="w-5 h-5" />
           </button>
         </div>
       </div>
       
-      <div className="flex-1 overflow-y-auto p-6 space-y-8">
+      <div className="flex-1 overflow-y-auto p-6 space-y-10 custom-scrollbar">
         
-        {/* Arriba: avatar circular grande con iniciales, nombre, email y teléfono */}
-        <div className="flex flex-col items-center justify-center text-center space-y-4">
-          <div className="w-24 h-24 rounded-full bg-obsidian-border flex items-center justify-center text-3xl font-bold uppercase tracking-widest text-white shadow-xl">
-            {lead.name.substring(0, 2)}
-          </div>
-          <div>
-            <h3 className="text-2xl font-bold leading-tight">{lead.name}</h3>
-            <div className="text-sm text-obsidian-muted mt-1 space-y-0.5">
-              {lead.email && <p>{lead.email}</p>}
-              <p>{lead.phone}</p>
+        {/* Sección: Análisis BANT (Lira Cognitive Card) */}
+        <BantAnalysis bant={salesData?.bant} />
+
+        {/* Sección: Acciones Pendientes de Agentes (Shadow Sync Validation) */}
+        {salesData?.bant && (
+          <div className="space-y-4">
+            <h4 className="text-xs font-bold uppercase tracking-widest text-obsidian-muted flex items-center justify-between">
+              Acciones de Agentes Sugeridas
+              <span className="text-[10px] bg-obsidian-primary/10 text-obsidian-primary px-2 py-0.5 rounded border border-obsidian-primary/20">Validación Requerida</span>
+            </h4>
+            <div className="grid grid-cols-1 gap-4">
+              <AgentActionCard 
+                type="atlas"
+                data={{
+                  nombre: "Villa Lujo Marbella",
+                  ubicacion: "Sierra Blanca, Marbella",
+                  precio: "3.500.000",
+                  url_imagen: "https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&q=80&w=400"
+                }}
+                onApprove={() => handleApproveAtlas({
+                  nombre: "Villa Lujo Marbella",
+                  ubicacion: "Sierra Blanca, Marbella",
+                  precio: "3.500.000"
+                })}
+                onReject={() => console.log("Atlas rejected")}
+              />
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Fila de píldoras con datos clave: Tipo, Zona, Estado */}
-        <div className="flex flex-wrap justify-center gap-2">
-          <span className="px-3 py-1 bg-white/5 rounded-full text-xs font-medium border border-obsidian-border capitalize">
-            {lead.type}
-          </span>
-          {lead.zone && (
-            <span className="px-3 py-1 bg-white/5 rounded-full text-xs font-medium border border-obsidian-border">
-              {lead.zone}
-            </span>
-          )}
-          <span className="px-3 py-1 bg-white/5 rounded-full text-xs font-medium border border-obsidian-border uppercase">
-            Estado: {lead.status.replace('_', ' ')}
-          </span>
-        </div>
-
-        {/* AI Score: número grande, barra de progreso codificada por color, texto "Calificación IA" */}
-        <div className="glass-card p-6 flex flex-col items-center justify-center space-y-4 border border-white/5 bg-white/5">
-          <div className="text-center">
-            <span className={cn("text-6xl font-extrabold tracking-tighter", scoreTextColor)}>
-              {lead.score}
-            </span>
-          </div>
-          <div className="w-full h-2 bg-obsidian-bg rounded-full overflow-hidden">
-            <div 
-              className={cn("h-full rounded-full transition-all duration-1000", scoreColor)} 
-              style={{ width: `${lead.score}%` }} 
-            />
-          </div>
-          <p className="text-xs font-bold uppercase tracking-widest text-obsidian-muted">
-            Calificación IA
-          </p>
-        </div>
-
-        {/* Historial de conversación */}
+        {/* Sección: Historial de Actividad (Monitor Feed) */}
         <div className="space-y-4">
-          <h4 className="text-sm font-bold uppercase tracking-wider text-obsidian-muted">
-            Historial de Conversación
+          <h4 className="text-xs font-bold uppercase tracking-widest text-obsidian-muted flex items-center justify-between">
+            Historial de Actividad
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+              <span className="text-[9px] text-obsidian-muted">Sincronizado GHL</span>
+            </div>
           </h4>
-          <div className="glass-card p-4 min-h-[160px] max-h-[300px] overflow-y-auto space-y-3 bg-white/5 border border-white/5">
-            {salesHistory.length === 0 ? (
-              <div className="h-full flex items-center justify-center py-6 text-sm text-obsidian-muted">
-                Sin conversaciones aún.
-              </div>
-            ) : (
-              salesHistory.map((msg, idx) => {
-                 // Aquí, según las instrucciones directas de HOY: "los mensajes del lead a la derecha, los del agente a la izquierda"
-                 const isLead = msg.role === 'lead' || msg.role === 'usuario';
-                 return (
-                   <div key={idx} className={cn(
-                     "flex flex-col gap-1 w-fit max-w-[85%]",
-                     isLead ? "ml-auto items-end" : "mr-auto items-start"
-                   )}>
-                     <div className={cn(
-                       "p-3 rounded-2xl text-[13px] leading-relaxed shadow-sm",
-                       isLead 
-                         ? "bg-obsidian-primary/20 text-white rounded-tr-sm border border-obsidian-primary/30" 
-                         : "bg-obsidian-bg text-gray-200 rounded-tl-sm border border-obsidian-border"
-                     )}>
-                       {msg.content}
-                     </div>
-                   </div>
-                 );
-              })
-            )}
-          </div>
-        </div>
-
-        {/* Propiedades vistas */}
-        <div className="space-y-4">
-          <h4 className="text-sm font-bold uppercase tracking-wider text-obsidian-muted">
-            Propiedades Vistas
-          </h4>
-          <div className="glass-card p-4 text-sm text-obsidian-muted flex items-center justify-center py-6 border border-white/5 bg-white/5">
-            {propertiesViewed.length === 0 ? (
-              "Sin actividad registrada."
-            ) : (
-              // En un ambiente real, iteraríamos `propertiesViewed.map(...)`
-              <ul className="w-full text-left space-y-2">
-                {propertiesViewed.map((prop, i) => (
-                  <li key={i}>{prop.title}</li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <ActivityTimeline events={events} />
         </div>
       </div>
 
-      {/* Al fondo, botones en fila */}
-      <div className="p-6 border-t border-obsidian-border bg-obsidian-card shrink-0 flex gap-2 flex-wrap">
-        <button 
-          onClick={() => window.location.href = '/calendar'}
-          className="flex-1 flex flex-col py-3 px-2 bg-obsidian-primary text-obsidian-bg font-bold rounded-xl hover:opacity-90 transition-opacity items-center justify-center text-[11px] text-center"
-        >
-          <Calendar className="w-4 h-4 mb-1" />
-          Agendar
-        </button>
-        <button 
-          onClick={() => window.location.href = '/chats'}
-          className="flex-1 flex flex-col py-3 px-2 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition-colors items-center justify-center text-[11px] text-center"
-        >
-          <MessageSquare className="w-4 h-4 mb-1" />
-          Mensaje
-        </button>
+      {/* Footer Actions */}
+      <div className="p-6 border-t border-obsidian-border bg-obsidian-card/80 backdrop-blur-md shrink-0 flex gap-3">
         <button 
           onClick={() => setShowDossier(true)}
-          className="flex-1 flex flex-col py-3 px-2 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition-colors items-center justify-center text-[11px] text-center"
+          className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-all border border-white/5 flex items-center justify-center gap-2"
         >
-          <FileText className="w-4 h-4 mb-1" />
-          Dossier
+          <FileText className="w-4 h-4" />
+          Generar Dossier
         </button>
         <button 
           onClick={() => window.open(`https://app.gohighlevel.com/contacts/detail/${lead.id}`, '_blank')}
-          className="flex-1 flex flex-col py-3 px-2 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition-colors items-center justify-center text-[11px] text-center"
+          className="flex-1 py-3 bg-obsidian-primary text-obsidian-bg font-bold rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-lg shadow-obsidian-primary/20"
         >
-          <ExternalLink className="w-4 h-4 mb-1" />
-          GHL
+          <ExternalLink className="w-4 h-4" />
+          Gestionar GHL
         </button>
       </div>
 
