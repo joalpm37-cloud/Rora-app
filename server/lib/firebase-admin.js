@@ -9,7 +9,13 @@ let serviceAccount;
 // 1. Intenta cargar desde variable de entorno (Recomendado para Render/Producción)
 if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
     try {
-        serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+        let jsonStr = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+        // Si no empieza con '{', probablemente es Base64
+        if (jsonStr.trim() && !jsonStr.trim().startsWith('{')) {
+            console.log("🔐 Firebase Admin: Detectado formato Base64, decodificando...");
+            jsonStr = Buffer.from(jsonStr, 'base64').toString('utf-8');
+        }
+        serviceAccount = JSON.parse(jsonStr);
         console.log("🔐 Firebase Admin: Cargado desde variable de entorno.");
     } catch (e) {
         console.error("❌ Error parseando FIREBASE_SERVICE_ACCOUNT_JSON:", e.message);
