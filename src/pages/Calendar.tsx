@@ -30,12 +30,7 @@ import { CalendarEvent } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { handleFirestoreError, OperationType } from '../lib/error-handling';
 import { NewEventModal } from '../components/calendar/NewEventModal';
-const getApiUrl = (path: string) => {
-  const base = window.location.hostname === 'localhost' 
-    ? 'http://localhost:3001' 
-    : 'https://rora-app.onrender.com';
-  return `${base}${path}`;
-};
+import { getApiUrl } from '../lib/api-client';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));

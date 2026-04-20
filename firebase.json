@@ -9,7 +9,7 @@
     "rewrites": [
       {
         "source": "/api/**",
-        "destination": "https://rora-app.onrender.com"
+        "destination": "https://rora-backend-rora-app-d98e6-uc.a.run.app"
       },
       {
         "source": "**",

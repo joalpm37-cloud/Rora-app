@@ -31,12 +31,14 @@ DEBES devolver SIEMPRE un JSON con esta estructura exacta:
 
 export async function generarContenidoConLumen(propiedadData) {
   try {
-    const prompt = `Propiedad: ${propiedadData.titulo || 'Sin título'}
-Precio: ${propiedadData.precio || 'Consultar'}
-Zona: ${propiedadData.zona || 'N/A'}
-Habitaciones: ${propiedadData.habitaciones || '0'}
-Descripción: ${propiedadData.descripcion || ''}
-Fotos (URL): ${JSON.stringify(propiedadData.fotos || [])}`;
+    const prompt = `Propiedad: ${propiedadData.address || 'Sin dirección'}
+Precio: ${propiedadData.price || 'Consultar'} €
+Zona: ${propiedadData.zone || 'N/A'}
+Habitaciones: ${propiedadData.bedrooms || '0'}
+Baños: ${propiedadData.bathrooms || '0'}
+Metros: ${propiedadData.sqm || '0'} m2
+Descripción: ${propiedadData.description || ''}
+Fotos (URL): ${JSON.stringify(propiedadData.photos || [])}`;
 
     const respuesta = await llamarGemini(systemPromptLumen, prompt);
     

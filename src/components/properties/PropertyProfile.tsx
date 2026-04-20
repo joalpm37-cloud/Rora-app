@@ -26,12 +26,22 @@ export const PropertyProfile: React.FC<PropertyProfileProps> = ({ property, onCl
       <div className="flex-1 overflow-y-auto">
         {/* Cover Photo */}
         <div className="relative h-64 w-full">
-          <img 
-            src={property.coverPhoto} 
-            alt={property.address} 
-            className="w-full h-full object-cover"
-            referrerPolicy="no-referrer"
-          />
+          {property.videoUrl ? (
+            <video 
+              src={property.videoUrl} 
+              className="w-full h-full object-cover"
+              controls
+              playsInline
+              poster={property.coverPhoto}
+            />
+          ) : (
+            <img 
+              src={property.coverPhoto} 
+              alt={property.address} 
+              className="w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+            />
+          )}
           <div className="absolute top-4 left-4">
             <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full backdrop-blur-md border bg-black/40 text-white border-white/30">
               {property.status === 'active' ? 'Activa' : 

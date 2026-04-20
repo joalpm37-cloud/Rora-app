@@ -11,12 +11,7 @@ interface NewCampaignModalProps {
   onClose: () => void;
 }
 
-const getApiUrl = (path: string) => {
-  const base = window.location.hostname === 'localhost' 
-    ? 'http://localhost:3001' 
-    : 'https://rora-app.onrender.com';
-  return `${base}${path}`;
-};
+import { getApiUrl } from '../../lib/api-client';
 
 export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({ onClose }) => {
   const { user } = useAuth();

@@ -2,12 +2,7 @@ import React, { useState } from 'react';
 import { X, FileText, Download, MessageSquare, Loader2 } from 'lucide-react';
 import { Lead } from '../../types';
 
-const getApiUrl = (path: string) => {
-  const base = window.location.hostname === 'localhost' 
-    ? 'http://localhost:3001' 
-    : 'https://rora-app.onrender.com';
-  return `${base}${path}`;
-};
+import { getApiUrl } from '../../lib/api-client';
 
 interface DossierModalProps {
   lead: Lead;

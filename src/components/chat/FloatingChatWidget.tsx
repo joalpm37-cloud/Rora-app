@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, X, Send, User, Bot, Loader2, Mic } from 'lucide-react';
+import { getApiUrl } from '../lib/api-client';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -116,11 +117,9 @@ export const FloatingChatWidget: React.FC = () => {
       };
       console.log("Enviando a Rora Orchestrator:", payload);
 
-      const API_URL = window.location.hostname === 'localhost' 
-        ? 'http://localhost:3001/api/rora/chat' 
-        : 'https://rora-app.onrender.com/api/rora/chat';
+      const url = getApiUrl('/api/rora/chat');
 
-      const response = await fetch(API_URL, {
+      const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)

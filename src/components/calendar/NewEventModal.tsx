@@ -6,12 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { handleFirestoreError, OperationType } from '../../lib/error-handling';
 import { EventType, CalendarEvent } from '../../types';
 import { MakeIntegration, sendEventToMake } from '../../services/makeIntegration';
-const getApiUrl = (path: string) => {
-  const base = window.location.hostname === 'localhost' 
-    ? 'http://localhost:3001' 
-    : 'https://rora-app.onrender.com';
-  return `${base}${path}`;
-};
+import { getApiUrl } from '../../lib/api-client';
 
 interface NewEventModalProps {
   onClose: () => void;

@@ -177,7 +177,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ property, onClose })
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          propertyId: createdPropertyId,
+          propiedadId: createdPropertyId,
           type: 'LUMEN_VIDEO_RENDER'
         })
       });

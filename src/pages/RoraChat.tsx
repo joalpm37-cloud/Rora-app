@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Bot, Check } from 'lucide-react';
+import { getApiUrl } from '../lib/api-client';
 
 interface Message {
   id: string;
@@ -21,13 +22,6 @@ const extraerDatosGHL = (texto: string) => {
     telefono: telfMatch ? telfMatch[1].trim() : "",
     notas: texto
   };
-};
-
-const getApiUrl = (path: string) => {
-  const base = window.location.hostname === 'localhost' 
-    ? 'http://localhost:3001' 
-    : 'https://rora-app.onrender.com';
-  return `${base}${path}`;
 };
 
 export const RoraChat: React.FC = () => {

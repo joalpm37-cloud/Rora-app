@@ -9,12 +9,7 @@ function cn(...inputs: ClassValue[]) {
 
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
-const getApiUrl = (path: string) => {
-  const base = window.location.hostname === 'localhost' 
-    ? 'http://localhost:3001' 
-    : 'https://rora-app.onrender.com';
-  return `${base}${path}`;
-};
+import { getApiUrl } from '../../lib/api-client';
 
 interface AIGeneratorModalProps {
   isOpen: boolean;

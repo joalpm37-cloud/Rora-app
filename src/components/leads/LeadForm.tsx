@@ -6,12 +6,7 @@ import { Lead, LeadStatus, LeadType, LeadSource } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import { handleFirestoreError, OperationType } from '../../lib/error-handling';
 import { MakeIntegration, sendEventToMake } from '../../services/makeIntegration';
-const getApiUrl = (path: string) => {
-  const base = window.location.hostname === 'localhost' 
-    ? 'http://localhost:3001' 
-    : 'https://rora-app.onrender.com';
-  return `${base}${path}`;
-};
+import { getApiUrl } from '../../lib/api-client';
 
 import { CheckCircle2 } from 'lucide-react';
 

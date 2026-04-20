@@ -3,11 +3,13 @@
  * Centralizes all frontend-to-backend calls.
  */
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 
+  (window.location.hostname === 'localhost' 
+    ? 'http://localhost:8080' 
+    : '/api'); // Usar rutas relativas para el proxy de Firebase
+
 export const getApiUrl = (path: string) => {
-  const base = window.location.hostname === 'localhost' 
-    ? 'http://localhost:3001' 
-    : 'https://rora-app.onrender.com';
-  return `${base}${path.startsWith('/') ? '' : '/'}${path}`;
+  return `${API_BASE_URL}${path.startsWith('/') ? '' : '/'}${path}`;
 };
 
 // --- GHL Proxy Calls ---

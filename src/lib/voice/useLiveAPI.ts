@@ -123,65 +123,31 @@ export function useLiveAPI(onTask: (data: TaskData) => void) {
                   const args = call.args as any;
                   const agente = args.agente || "Todos";
                   
-                  // Generar informe de forma asíncrona
-                  const generateReport = async () => {
-                    let reportText = "";
-                    
-                    if (agente === "Aura" || agente === "Todos") {
-                      const q = query(collection(db, 'campanas'), limit(3));
-                      const snap = await getDocs(q);
-                      const camps = snap.docs.map(d => d.data());
-                      reportText += `Aura tiene ${snap.size} campañas activas. `;
-                      if (camps.length > 0) reportText += `La última campaña reporta un CPL promedio de ${camps[0].cpl_promedio || 'no disponible'}. `;
-                    }
-
-                    if (agente === "Lumen" || agente === "Todos") {
-                        const q = query(collection(db, 'logs-agentes'), orderBy('timestamp', 'desc'), limit(5));
-                        const snap = await getDocs(q);
-                        const lumenLogs = snap.docs.filter(d => d.data().agente === 'Lumen');
-                        reportText += `Lumen ha generado ${lumenLogs.length} piezas de contenido recientemente. El último fue: ${lumenLogs[0]?.data()?.mensaje.split('guion para')[1] || 'un guion nuevo'}. `;
-                    }
-
-                    if (agente === "Atlas" || agente === "Todos") {
-                        const q = query(collection(db, 'logs-agentes'), orderBy('timestamp', 'desc'), limit(10));
-                        const snap = await getDocs(q);
-                        const atlasLogs = snap.docs.filter(d => d.data().agente === 'Atlas');
-                        reportText += `Atlas ha completado ${atlasLogs.length} misiones de exploración. `;
-                    }
-
-                    // Reporte de Visitas (Lyra / Calendario)
-                    if (agente === "Lyra" || agente === "Todos") {
-                        const today = new Date();
-                        today.setHours(0,0,0,0);
-                        const q = query(collection(db, 'calendarEvents'), orderBy('date', 'asc'));
-                        const snap = await getDocs(q);
+                    // Generar informe llamando al backend
+                    const generateReport = async () => {
+                      try {
+                        const baseUrl = window.location.hostname === 'localhost' 
+                          ? 'http://localhost:8080' 
+                          : 'https://rora-backend-rora-app-d98e6-uc.a.run.app';
                         
-                        const todayVisits = snap.docs.filter(d => {
-                            const dDate = d.data().date?.toDate();
-                            return dDate && dDate >= today && dDate < new Date(today.getTime() + 86400000);
-                        });
+                        const response = await fetch(`${baseUrl}/api/reports/voice?agente=${agente}`);
+                        const data = await response.json();
+                        
+                        const reportText = data.success ? data.report : "No pude obtener el informe en este momento.";
 
-                        if (todayVisits.length > 0) {
-                            reportText += `Hoy tienes ${todayVisits.length} visitas programadas: `;
-                            todayVisits.forEach(v => {
-                                const data = v.data();
-                                reportText += `${data.title} a las ${data.time} ${data.location ? 'en ' + data.location : ''}. `;
+                        sessionRef.current?.then(session => {
+                            session.sendToolResponse({
+                              functionResponses: [{
+                                name: call.name,
+                                id: call.id,
+                                response: { reportContent: reportText }
+                              }]
                             });
-                        } else {
-                            reportText += "No tienes visitas programadas para el día de hoy. ";
-                        }
-                    }
-
-                    sessionRef.current?.then(session => {
-                        session.sendToolResponse({
-                          functionResponses: [{
-                            name: call.name,
-                            id: call.id,
-                            response: { reportContent: reportText }
-                          }]
                         });
-                    });
-                  };
+                      } catch (err) {
+                        console.error("Error fetching voice report:", err);
+                      }
+                    };
                   
                   generateReport();
                 }

@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import fs from 'fs';
 import { db } from './lib/firebase.js';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
@@ -24,17 +25,32 @@ import {
   buscarContactoGHL,
   crearCitaGHL
 } from './rora/utils/ghl-api.js';
+import reportsRouter from './routes/reports.js';
 import { generarDossierPDF } from './rora/utils/pdf-generator.js';
 import { getAuthUrl, handleAuthCallback } from './rora/utils/google-api.js';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import admin from './lib/firebase-admin.js';
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 8080;
 
-app.use(cors()); 
+app.use(cors({
+  origin: [
+    'https://rora-app-d98e6.web.app',
+    'https://rora-app-d98e6.firebaseapp.com',
+    'https://app.rora.com.es',
+    'http://localhost:5173',
+    'http://localhost:3000'
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true
+})); 
 app.use(express.json());
+
+// Routes
+app.use('/api/reports', reportsRouter);
 
 // --- ENDPOINTS ---
 
@@ -221,19 +237,73 @@ app.post('/api/agents/content/generate', async (req, res) => {
 });
 
 app.post('/api/video/render', async (req, res) => {
-  const { propiedadId, videoConfig } = req.body;
+  const { propiedadId, videoConfig, type } = req.body;
   
-  if (!propiedadId || !videoConfig) {
-    return res.status(400).json({ error: 'Faltan datos de propiedad o configuración' });
+  if (!propiedadId) {
+    return res.status(400).json({ error: 'Falta propiedadId' });
   }
 
   try {
-    console.log(`🎬 Petición de renderizado para propiedad: ${propiedadId}`);
-    const videoUrl = await renderPropiedadVideo(propiedadId, videoConfig);
-    res.json({ success: true, url: videoUrl });
+    console.log(`🎬 Pipeline de Video iniciado para: ${propiedadId}`);
+    
+    // 1. Obtener datos de la propiedad
+    const propRef = doc(db, 'propiedades', propiedadId);
+    const propSnap = await getDoc(propRef);
+    if (!propSnap.exists()) throw new Error("Propiedad no encontrada");
+    const propiedadData = propSnap.data();
+
+    // 2. Si es tipo Lumen, generamos la dirección de arte si no viene dada
+    let finalConfig = videoConfig;
+    if (type === 'LUMEN_VIDEO_RENDER' && !finalConfig) {
+      console.log("🎨 Solicitando dirección de arte a Lumen AI...");
+      const lumenResult = await generarContenidoConLumen(propiedadData);
+      finalConfig = lumenResult.videoConfig;
+    }
+
+    if (!finalConfig) throw new Error("Configuración de video no disponible");
+
+    // 3. Responder al cliente que el proceso ha empezado (Async)
+    res.json({ success: true, message: 'Renderizado en proceso...' });
+
+    // 4. Ejecución en segundo plano
+    (async () => {
+      try {
+        const localFilePath = await renderPropiedadVideo(propiedadId, finalConfig);
+        
+        // 5. Subir a Firebase Storage
+        console.log("☁️ Subiendo video a Firebase Storage...");
+        const bucket = admin.storage().bucket();
+        const destination = `videos/${propiedadId}/${Date.now()}.mp4`;
+        
+        const [file] = await bucket.upload(localFilePath, {
+          destination,
+          metadata: { contentType: 'video/mp4' }
+        });
+
+        // Hacerlo público
+        await file.makePublic();
+        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${destination}`;
+
+        // 6. Actualizar Firestore
+        await updateDoc(propRef, {
+          videoUrl: publicUrl,
+          videoGeneratedAt: serverTimestamp(),
+          videoStatus: 'completed'
+        });
+
+        // 7. Cleanup local
+        fs.unlinkSync(localFilePath);
+        console.log(`✅ Video completado y disponible en: ${publicUrl}`);
+
+      } catch (innerError) {
+        console.error("❌ Error en el proceso de renderizado:", innerError);
+        await updateDoc(propRef, { videoStatus: 'error', videoError: innerError.message });
+      }
+    })();
+
   } catch (error) {
     console.error('Error in /api/video/render:', error);
-    res.status(500).json({ error: 'Error rendering video' });
+    res.status(500).json({ error: 'Error al iniciar pipeline de video' });
   }
 });
 

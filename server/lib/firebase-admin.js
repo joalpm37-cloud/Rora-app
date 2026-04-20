@@ -24,7 +24,8 @@ if (!serviceAccount && fs.existsSync('./serviceAccountKey.json')) {
 
 if (!admin.apps.length && serviceAccount) {
     admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
+        credential: admin.credential.cert(serviceAccount),
+        storageBucket: "rora-app-d98e6.firebasestorage.app"
     });
     console.log("✅ Firebase Admin inicializado correctamente.");
 } else if (!serviceAccount) {

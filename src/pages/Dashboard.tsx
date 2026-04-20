@@ -4,12 +4,7 @@ import { collection, query, orderBy, onSnapshot, limit, where, Timestamp, getDoc
 import { db } from '../lib/firebase';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
-const getApiUrl = (path: string) => {
-  const base = window.location.hostname === 'localhost' 
-    ? 'http://localhost:3001' 
-    : 'https://rora-app.onrender.com';
-  return `${base}${path}`;
-};
+import { getApiUrl } from '../lib/api-client';
 
 import { 
   Users, 
