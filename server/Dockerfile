@@ -1,16 +1,4 @@
-# Usar la imagen recomendada de Debian (Bookworm) para mayor estabilidad con Chromium
-FROM node:20-bookworm-slim
-
-# Instalar Chromium y dependencias mínimas de sistema
-RUN apt-get update && apt-get install -y \
-    chromium \
-    fonts-freefont-ttf \
-    --no-install-recommends \
-    && rm -rf /var/lib/apt/lists/*
-
-# Configurar variables de entorno globales para Remotion/Puppeteer
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+FROM node:20-slim
 
 # Directorio de trabajo
 WORKDIR /app

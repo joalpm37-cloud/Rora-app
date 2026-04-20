@@ -14,7 +14,7 @@ import { analizarCampanaActiva, crearEstructuraCampana } from './rora/agentes/pe
 import { generarContenidoConLumen } from './rora/agentes/content-agent.js';
 import { buscarAlternativasConAtlas } from './rora/agentes/explorer-agent.js';
 import { createCalendarEvent, sendGmail } from './rora/utils/google-api.js';
-import { renderPropiedadVideo } from './rora/video/videoRenderer.js';
+// import { renderPropiedadVideo } from './rora/video/videoRenderer.js'; // REMOTION FALLBACK
 
 // Utils
 import { 
@@ -243,74 +243,11 @@ app.post('/api/agents/content/generate', async (req, res) => {
 });
 
 app.post('/api/video/render', async (req, res) => {
-  const { propiedadId, videoConfig, type } = req.body;
-  
-  if (!propiedadId) {
-    return res.status(400).json({ error: 'Falta propiedadId' });
-  }
-
-  try {
-    console.log(`🎬 Pipeline de Video iniciado para: ${propiedadId}`);
-    
-    // 1. Obtener datos de la propiedad
-    const propRef = doc(db, 'propiedades', propiedadId);
-    const propSnap = await getDoc(propRef);
-    if (!propSnap.exists()) throw new Error("Propiedad no encontrada");
-    const propiedadData = propSnap.data();
-
-    // 2. Si es tipo Lumen, generamos la dirección de arte si no viene dada
-    let finalConfig = videoConfig;
-    if (type === 'LUMEN_VIDEO_RENDER' && !finalConfig) {
-      console.log("🎨 Solicitando dirección de arte a Lumen AI...");
-      const lumenResult = await generarContenidoConLumen(propiedadData);
-      finalConfig = lumenResult.videoConfig;
-    }
-
-    if (!finalConfig) throw new Error("Configuración de video no disponible");
-
-    // 3. Responder al cliente que el proceso ha empezado (Async)
-    res.json({ success: true, message: 'Renderizado en proceso...' });
-
-    // 4. Ejecución en segundo plano
-    (async () => {
-      try {
-        const localFilePath = await renderPropiedadVideo(propiedadId, finalConfig);
-        
-        // 5. Subir a Firebase Storage
-        console.log("☁️ Subiendo video a Firebase Storage...");
-        const bucket = admin.storage().bucket();
-        const destination = `videos/${propiedadId}/${Date.now()}.mp4`;
-        
-        const [file] = await bucket.upload(localFilePath, {
-          destination,
-          metadata: { contentType: 'video/mp4' }
-        });
-
-        // Hacerlo público
-        await file.makePublic();
-        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${destination}`;
-
-        // 6. Actualizar Firestore
-        await updateDoc(propRef, {
-          videoUrl: publicUrl,
-          videoGeneratedAt: serverTimestamp(),
-          videoStatus: 'completed'
-        });
-
-        // 7. Cleanup local
-        fs.unlinkSync(localFilePath);
-        console.log(`✅ Video completado y disponible en: ${publicUrl}`);
-
-      } catch (innerError) {
-        console.error("❌ Error en el proceso de renderizado:", innerError);
-        await updateDoc(propRef, { videoStatus: 'error', videoError: innerError.message });
-      }
-    })();
-
-  } catch (error) {
-    console.error('Error in /api/video/render:', error);
-    res.status(500).json({ error: 'Error al iniciar pipeline de video' });
-  }
+  return res.status(503).json({ 
+    success: false, 
+    error: "Motor de video desactivado por contingencia de memoria en Cloud Run.",
+    status: 503
+  });
 });
 
 app.post('/api/agents/explorer/search', async (req, res) => {
