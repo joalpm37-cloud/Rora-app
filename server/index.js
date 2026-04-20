@@ -412,6 +412,17 @@ app.post('/api/agents/scheduler/book', async (req, res) => {
   }
 });
 
+// --- PRE-FLIGHT CHECK ---
+console.log("🔍 Pre-flight Check: Verificando entorno...");
+const requiredVars = ['GEMINI_API_KEY', 'FIREBASE_SERVICE_ACCOUNT_JSON', 'GHL_LOCATION_ID'];
+const missing = requiredVars.filter(v => !process.env[v]);
+
+if (missing.length > 0) {
+  console.warn("⚠️ ADVERTENCIA: Faltan variables críticas:", missing.join(', '));
+} else {
+  console.log("✅ Variables de entorno detectadas correctamente.");
+}
+
 // --- START SERVER ---
 try {
   console.log("🚀 Starting RORA Backend...");

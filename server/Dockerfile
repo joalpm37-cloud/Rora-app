@@ -1,39 +1,31 @@
-# Use Node.js 20-bullseye as the base image (includes more system libs)
-FROM node:20-bullseye
+# Usar la imagen recomendada de Debian (Bookworm) para mayor estabilidad con Chromium
+FROM node:20-bookworm-slim
 
-# Install system dependencies for Chromium (required by Remotion)
+# Instalar Chromium y dependencias mínimas de sistema
 RUN apt-get update && apt-get install -y \
-    libnss3 \
-    libdbus-1-3 \
-    libatk1.0-0 \
-    libatk-bridge2.0-0 \
-    libcups2 \
-    libdrm2 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxext6 \
-    libxfixes3 \
-    libxrandr2 \
-    libgbm1 \
-    libasound2 \
-    libpangocairo-1.0-0 \
-    libxshmfence1 \
+    chromium \
+    fonts-freefont-ttf \
+    --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
+# Configurar variables de entorno globales para Remotion/Puppeteer
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+
+# Directorio de trabajo
 WORKDIR /app
 
-# Copy package.json and lock file
+# Copiar dependencias
 COPY package*.json ./
 
-# Install only production dependencies
+# Instalar dependencias de producción
 RUN npm install --omit=dev && npm cache clean --force
 
-# Copy the rest of the server code
+# Copiar el resto del código
 COPY . .
 
-# Expose the standard Cloud Run port
+# Exponer puerto para Cloud Run
 EXPOSE 8080
 
-# Start the server
+# Iniciar servidor
 CMD ["npm", "start"]

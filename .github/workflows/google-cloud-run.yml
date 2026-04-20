@@ -42,8 +42,8 @@ jobs:
       - name: Prepare Base64 Secret
         id: prepare_secrets
         run: |
-          # Codificar el JSON a Base64 y eliminar saltos de línea para que sea una sola cadena
-          B64_JSON=$(echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}' | base64 -w 0)
+          # Codificar el JSON a Base64 de forma limpia (sin saltos de línea al final ni intermedios)
+          B64_JSON=$(echo -n '${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}' | base64 -w 0)
           echo "FIREBASE_B64=$B64_JSON" >> $GITHUB_ENV
 
       - name: Deploy to Cloud Run
