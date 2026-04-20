@@ -14,7 +14,6 @@ import { analizarCampanaActiva, crearEstructuraCampana } from './rora/agentes/pe
 import { generarContenidoConLumen } from './rora/agentes/content-agent.js';
 import { buscarAlternativasConAtlas } from './rora/agentes/explorer-agent.js';
 import { createCalendarEvent, sendGmail } from './rora/utils/google-api.js';
-// import { renderPropiedadVideo } from './rora/video/videoRenderer.js'; // REMOTION FALLBACK
 
 // Utils
 import { 
@@ -34,12 +33,6 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import admin from './lib/firebase-admin.js';
 
 const app = express();
-const PORT = process.env.PORT || 8080;
-
-// ARRANQUE INMEDIATO (Cloud Run Safety)
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 RORA Backend is live on port ${PORT}`);
-});
 
 app.use(cors({
   origin: [
@@ -99,7 +92,6 @@ app.get('/api/auth/google/callback', async (req, res) => {
 
   try {
     await handleAuthCallback(code, userId);
-    // Redirigir de vuelta al frontend (ajustar URL según entorno)
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     res.redirect(`${frontendUrl}/integrations?status=success`);
   } catch (error) {
@@ -123,8 +115,8 @@ app.get('/api/auth/google/status/:userId', async (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 
-    version: 'V3.1.0-STABLE', 
-    message: 'RORA Backend - Google Cloud Run optimized deployment active.' 
+    version: 'V3.2.0-ATOMIC', 
+    message: 'RORA Backend - Atomic Loader Active.' 
   });
 });
 
@@ -270,7 +262,6 @@ app.post('/api/rora/chat', async (req, res) => {
   if (!mensaje) return res.status(400).json({ error: 'Mensaje es requerido' });
 
   try {
-    console.log('🤖 RORA Orquestador (Prod) procesando...');
     const result = await procesarMensajeRora(mensaje, historial || []);
     res.json({
       success: true,
@@ -289,18 +280,13 @@ app.post('/api/rora/chat', async (req, res) => {
 app.post('/api/sales-agent/mensaje', async (req, res) => {
   try {
     const { contactId, nombre, telefono, canal, mensaje, historial, type, source, direction } = req.body;
-    
-    // Identificación dinámica del canal (WA/IG)
     const normalizedChannel = (type || source || canal || 'sms').toLowerCase();
     const finalChannel = normalizedChannel.includes('whatsapp') ? 'whatsapp' : 
                          normalizedChannel.includes('instagram') ? 'instagram' : 'sms';
     
-    // Filtro: Solo inbound
     if (direction && direction !== 'inbound') {
       return res.json({ success: true, message: 'Mensaje saliente ignorado' });
     }
-
-    console.log(`📥 [Prod] Procesando mensaje de ${nombre || contactId} canal: ${finalChannel}`);
 
     const resultado = await procesarConversacionConLira(
       contactId || req.body.leadId,
@@ -314,43 +300,4 @@ app.post('/api/sales-agent/mensaje', async (req, res) => {
   }
 });
 
-// --- SCHEDULER AGENT ---
-
-app.post('/api/agents/scheduler/suggest', async (req, res) => {
-  const { userId, leadData } = req.body;
-  try {
-    const result = await sugerirCitasParaLead(userId, leadData);
-    res.json(result);
-  } catch (error) {
-    console.error('Error in Scheduler Agent:', error);
-    res.status(500).json({ error: 'Error in Scheduler Agent' });
-  }
-});
-
-app.post('/api/agents/scheduler/book', async (req, res) => {
-  const { userId, leadId, appointment, leadEmail } = req.body;
-  try {
-    const event = {
-      summary: `Visita Inmobiliaria: ${appointment.descripcion}`,
-      description: `Cita agendada via RORA AI para el lead ${leadId}`,
-      start: { dateTime: `${appointment.fecha}T${appointment.hora_inicio}:00`, timeZone: 'Europe/Madrid' },
-      end: { dateTime: `${appointment.fecha}T${appointment.hora_fin}:00`, timeZone: 'Europe/Madrid' },
-      attendees: [{ email: leadEmail }]
-    };
-
-    const calendarEvent = await createCalendarEvent(userId, event);
-    
-    // Notificación via Gmail
-    await sendGmail(userId, {
-      to: leadEmail,
-      subject: 'Confirmación de Visita Inmobiliaria',
-      body: `<h1>Cita Confirmada</h1><p>Tu visita para <b>${appointment.descripcion}</b> ha sido agendada para el ${appointment.fecha} a las ${appointment.hora_inicio}.</p>`
-    });
-
-    res.json({ success: true, event: calendarEvent });
-  } catch (error) {
-    console.error('Error booking appointment:', error);
-    res.status(500).json({ error: 'Error booking appointment' });
-  }
-});
-
+export default app;
