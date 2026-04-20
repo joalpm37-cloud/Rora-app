@@ -59,4 +59,3 @@ jobs:
             GHL_PIT_TOKEN=${{ secrets.GHL_PIT_TOKEN }}
             GHL_LOCATION_ID=${{ secrets.GHL_LOCATION_ID }}
             FIREBASE_SERVICE_ACCOUNT_JSON=${{ env.FIREBASE_B64 }}
-            PORT=8080
