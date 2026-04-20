@@ -3,20 +3,35 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Configuración del Cliente Gemini
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ 
-    model: "gemini-1.5-flash", // O el ID exacto de Gemini 3 Flash si es diferente
-});
+// Inicialización diferida (Lazy Loading) para evitar crashes si la API KEY está vacía al arrancar
+let genAI = null;
+let model = null;
+
+function getModel() {
+    const apiKey = process.env.GEMINI_API_KEY;
+    
+    if (!apiKey) {
+        console.error("🚨 [Gemini] ERROR: GEMINI_API_KEY no configurada.");
+        throw new Error("API Key de Gemini no disponible. Revisa los Secretos de GitHub.");
+    }
+
+    if (!model) {
+        genAI = new GoogleGenerativeAI(apiKey);
+        model = genAI.getGenerativeModel({ 
+            model: "gemini-1.5-flash", 
+        });
+    }
+    return model;
+}
 
 /**
  * Llama a la API de Gemini (Versión Flash)
  */
 export async function llamarGemini(systemPrompt, userPrompt, history = []) {
     try {
+        const activeModel = getModel();
         console.log("💎 Generando respuesta con Gemini 3 Flash...");
         
-        // Conversión de historial al formato de Google
         const contents = [
             { role: 'user', parts: [{ text: systemPrompt }] },
             { role: 'model', parts: [{ text: "Entendido. Actuaré según estas instrucciones." }] },
@@ -27,11 +42,11 @@ export async function llamarGemini(systemPrompt, userPrompt, history = []) {
             { role: 'user', parts: [{ text: userPrompt }] }
         ];
 
-        const result = await model.generateContent({ contents });
+        const result = await activeModel.generateContent({ contents });
         const response = await result.response;
         return response.text();
     } catch (error) {
-        console.error("❌ Error en llamarGemini (Producción):", error.message);
+        console.error("❌ Error en llamarGemini:", error.message);
         throw error;
     }
 }

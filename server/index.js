@@ -33,10 +33,13 @@ import { getAuthUrl, handleAuthCallback } from './rora/utils/google-api.js';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import admin from './lib/firebase-admin.js';
 
-dotenv.config();
-
 const app = express();
 const PORT = process.env.PORT || 8080;
+
+// ARRANQUE INMEDIATO (Cloud Run Safety)
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 RORA Backend is live on port ${PORT}`);
+});
 
 app.use(cors({
   origin: [
@@ -351,8 +354,3 @@ app.post('/api/agents/scheduler/book', async (req, res) => {
   }
 });
 
-// --- START SERVER ---
-const PORT = process.env.PORT || 8080;
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 RORA Backend is live on port ${PORT}`);
-});
