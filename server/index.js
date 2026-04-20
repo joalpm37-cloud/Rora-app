@@ -412,6 +412,17 @@ app.post('/api/agents/scheduler/book', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 RORA Server running on port ${PORT}`);
-});
+// --- START SERVER ---
+try {
+  console.log("🚀 Starting RORA Backend...");
+  console.log(`📡 Environment: ${process.env.NODE_ENV || 'production'}`);
+  console.log(`📦 Port: ${PORT}`);
+  
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`✅ RORA Backend listening on port ${PORT}`);
+    console.log(`🔥 Firebase Admin Status: ${admin.apps.length > 0 ? 'CONNECTED' : 'NOT CONNECTED'}`);
+  });
+} catch (error) {
+  console.error("❌ CRITICAL ERROR during server startup:", error);
+  process.exit(1);
+}

@@ -50,3 +50,4 @@ jobs:
             GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
             GHL_PIT_TOKEN=${{ secrets.GHL_PIT_TOKEN }}
             GHL_LOCATION_ID=${{ secrets.GHL_LOCATION_ID }}
+            FIREBASE_SERVICE_ACCOUNT_JSON=${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
