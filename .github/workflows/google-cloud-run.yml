@@ -39,13 +39,13 @@ jobs:
           docker push $IMAGE_URL
           echo "IMAGE_URL=$IMAGE_URL" >> $GITHUB_ENV
 
-      - name: Deploy to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v2
-        with:
-          service: ${{ env.SERVICE_NAME }}
-          region: ${{ env.REGION }}
-          image: ${{ env.IMAGE_URL }}
-          flags: "--port=8080 --allow-unauthenticated"
-          env_vars_separator: "|||"
-          env_vars: |
-            GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}|||GHL_PIT_TOKEN=${{ secrets.GHL_PIT_TOKEN }}|||GHL_LOCATION_ID=${{ secrets.GHL_LOCATION_ID }}|||FIREBASE_SERVICE_ACCOUNT_JSON=${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+      - name: Deploy to Cloud Run (Direct GCloud)
+        run: |
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image ${{ env.IMAGE_URL }} \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --port 8080 \
+            --allow-unauthenticated \
+            --update-env-vars="^@@@^GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}@@@GHL_PIT_TOKEN=${{ secrets.GHL_PIT_TOKEN }}@@@GHL_LOCATION_ID=${{ secrets.GHL_LOCATION_ID }}@@@FIREBASE_SERVICE_ACCOUNT_JSON=${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}" \
+            --update-labels="managed-by=github-actions,commit-sha=${{ github.sha }}"
