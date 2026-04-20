@@ -28,14 +28,19 @@ if (!serviceAccount && fs.existsSync('./serviceAccountKey.json')) {
     console.log("🔐 Firebase Admin: Cargado desde archivo local.");
 }
 
-if (!admin.apps.length && serviceAccount) {
-    admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-        storageBucket: "rora-app-d98e6.firebasestorage.app"
-    });
-    console.log("✅ Firebase Admin inicializado correctamente.");
-} else if (!serviceAccount) {
-    console.warn("⚠️ Firebase Admin NO inicializado: Falta configuración.");
+try {
+    if (!admin.apps.length && serviceAccount) {
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount),
+            storageBucket: "rora-app-d98e6.firebasestorage.app"
+        });
+        console.log("✅ Firebase Admin inicializado correctamente.");
+    } else if (!serviceAccount) {
+        console.warn("⚠️ Firebase Admin NO inicializado: Falta configuración o credenciales inválidas.");
+    }
+} catch (error) {
+    console.error("❌ ERROR FATAL inicializando Firebase Admin:", error.message);
+    // No relanzamos el error para permitir que el servidor Express arranque
 }
 
 export const dbAdmin = admin.firestore();

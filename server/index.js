@@ -1,6 +1,8 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import fs from 'fs';
 import { db } from './lib/firebase.js';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -425,13 +427,8 @@ if (missing.length > 0) {
 
 // --- START SERVER ---
 try {
-  console.log("🚀 Starting RORA Backend...");
-  console.log(`📡 Environment: ${process.env.NODE_ENV || 'production'}`);
-  console.log(`📦 Port: ${PORT}`);
-  
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`✅ RORA Backend listening on port ${PORT}`);
-    console.log(`🔥 Firebase Admin Status: ${admin.apps.length > 0 ? 'CONNECTED' : 'NOT CONNECTED'}`);
   });
 } catch (error) {
   console.error("❌ CRITICAL ERROR during server startup:", error);
