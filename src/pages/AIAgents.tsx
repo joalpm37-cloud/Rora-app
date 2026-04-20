@@ -16,8 +16,12 @@ import {
 import { collection, onSnapshot, query, orderBy, limit, getDocs, addDoc, Timestamp, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
-import { NewAgentModal } from '../components/ai-agents/NewAgentModal';
 import { LogsFullModal } from '../components/ai-agents/LogsFullModal';
+import { AuraDashboard } from '../components/ai-agents/AuraDashboard';
+import { LumenDashboard } from '../components/ai-agents/LumenDashboard';
+import { AtlasDashboard } from '../components/ai-agents/AtlasDashboard';
+import { LyraDashboard } from '../components/ai-agents/LyraDashboard';
+import { AnimatePresence } from 'motion/react';
 
 
 const initialAgents = [
@@ -75,6 +79,7 @@ export const AIAgents: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   const [logs, setLogs] = useState<any[]>([]);
+  const [viewingAgentId, setViewingAgentId] = useState<string | null>(null);
 
   const iconMap: any = {
     'CRM Agent': MessageSquare,
@@ -95,7 +100,8 @@ export const AIAgents: React.FC = () => {
             { id: "lira-sales", name: "Lira", description: "Ventas y Atención. Califica leads con BANT y entrega huecos de agenda del asesor.", status: "Activo", performance: 98, tasks: 1284, lastActive: "Hace 2 min" },
             { id: "lumen-content", name: "Lumen", description: "Gestión de Contenido. Transforma fotos de propiedades en guiones y piezas creativas.", status: "Activo", performance: 92, tasks: 215, lastActive: "Hace 15 min" },
             { id: "aura-ads", name: "Aura", description: "Estratega de Meta. Recibe el contenido de Lumen y lo publica/optimiza en Meta Ads.", status: "Inactivo", performance: 0, tasks: 0, lastActive: "Esperando contenido" },
-            { id: "atlas-explorer", name: "Atlas", description: "Buscador de Alternativas. Filtra el inventario interno cuando Lira no cierra la cita.", status: "Activo", performance: 85, tasks: 142, lastActive: "Ayer" }
+            { id: "atlas-explorer", name: "Atlas", description: "Buscador de Alternativas. Filtra el inventario interno cuando Lira no cierra la cita.", status: "Activo", performance: 85, tasks: 142, lastActive: "Ayer" },
+            { id: "lyra-sales", name: "Lyra", description: "Ventas y Atención. Califica leads con BANT y entrega huecos de agenda del asesor.", status: "Activo", performance: 98, tasks: 1284, lastActive: "Hace 2 min" }
           ];
           for (let a of initialAgentsData) {
             await addDoc(collection(db, 'agentes-config'), {
@@ -155,6 +161,30 @@ export const AIAgents: React.FC = () => {
     // Adding new agent to Firestore would go here
   };
 
+  if (viewingAgentId === 'aura-ads') {
+    return (
+      <AuraDashboard onBack={() => setViewingAgentId(null)} />
+    );
+  }
+
+  if (viewingAgentId === 'lumen-content') {
+    return (
+      <LumenDashboard onBack={() => setViewingAgentId(null)} />
+    );
+  }
+
+  if (viewingAgentId === 'atlas-explorer') {
+    return (
+      <AtlasDashboard onBack={() => setViewingAgentId(null)} />
+    );
+  }
+
+  if (viewingAgentId === 'lyra-sales') {
+    return (
+      <LyraDashboard onBack={() => setViewingAgentId(null)} />
+    );
+  }
+
   return (
     <div className="space-y-8 relative">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -173,86 +203,108 @@ export const AIAgents: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {agents.map((agent) => (
-          <div key={agent.id} className="glass-card p-8 flex flex-col gap-6 relative overflow-hidden group">
-            {/* Background Icon */}
-            {agent.icon && <agent.icon className="absolute -right-8 -bottom-8 w-48 h-48 text-white/5 group-hover:text-obsidian-primary/5 transition-colors duration-500" />}
-            
-            <div className="flex items-start justify-between relative z-10">
-              <div className="flex items-center gap-4">
-                <div className={cn(
-                  "w-14 h-14 rounded-2xl flex items-center justify-center border",
-                  agent.status === 'Activo' ? "bg-obsidian-primary/10 text-obsidian-primary border-obsidian-primary/20" : 
-                  agent.status === 'Mantenimiento' ? "bg-amber-500/10 text-amber-500 border-amber-500/20" : 
-                  "bg-rose-500/10 text-rose-500 border-rose-500/20"
-                )}>
-                  {agent.icon && <agent.icon className="w-7 h-7" />}
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold">{agent.name}</h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className={cn(
-                      "w-2 h-2 rounded-full",
-                      agent.status === 'Activo' ? "bg-emerald-500" : 
-                      agent.status === 'Mantenimiento' ? "bg-amber-500" : "bg-rose-500"
-                    )} />
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-obsidian-muted">{agent.status}</span>
+            <div 
+              onClick={() => {
+                if (agent.id === 'aura-ads') setViewingAgentId('aura-ads');
+                if (agent.id === 'lumen-content') setViewingAgentId('lumen-content');
+                if (agent.id === 'atlas-explorer') setViewingAgentId('atlas-explorer');
+              }}
+              className={cn(
+                "glass-card p-8 flex flex-col gap-6 relative overflow-hidden group transition-all duration-300",
+                (agent.id === 'aura-ads' || agent.id === 'lumen-content' || agent.id === 'atlas-explorer') ? "cursor-pointer hover:border-obsidian-primary/30 hover:bg-obsidian-primary/5" : ""
+              )}
+            >
+              {/* Background Icon */}
+              {agent.icon && <agent.icon className="absolute -right-8 -bottom-8 w-48 h-48 text-white/5 group-hover:text-obsidian-primary/5 transition-colors duration-500" />}
+              
+              <div className="flex items-start justify-between relative z-10">
+                <div className="flex items-center gap-4">
+                  <div className={cn(
+                    "w-14 h-14 rounded-2xl flex items-center justify-center border",
+                    agent.status === 'Activo' ? "bg-obsidian-primary/10 text-obsidian-primary border-obsidian-primary/20" : 
+                    agent.status === 'Mantenimiento' ? "bg-amber-500/10 text-amber-500 border-amber-500/20" : 
+                    "bg-rose-500/10 text-rose-500 border-rose-500/20"
+                  )}>
+                    {agent.icon && <agent.icon className="w-7 h-7" />}
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold">{agent.name}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className={cn(
+                        "w-2 h-2 rounded-full",
+                        agent.status === 'Activo' ? "bg-emerald-500" : 
+                        agent.status === 'Mantenimiento' ? "bg-amber-500" : "bg-rose-500"
+                      )} />
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-obsidian-muted">{agent.status}</span>
+                    </div>
                   </div>
                 </div>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Open settings modal if needed
+                  }}
+                  className="p-2 bg-white/5 rounded-xl hover:bg-white/10 transition-colors"
+                >
+                  <Settings className="w-5 h-5 text-obsidian-muted" />
+                </button>
               </div>
-              <button className="p-2 bg-white/5 rounded-xl hover:bg-white/10 transition-colors">
-                <Settings className="w-5 h-5 text-obsidian-muted" />
-              </button>
-            </div>
 
-            <p className="text-sm text-obsidian-muted leading-relaxed relative z-10">
-              {agent.description}
-            </p>
+              <p className="text-sm text-obsidian-muted leading-relaxed relative z-10">
+                {agent.description}
+              </p>
 
-            <div className="grid grid-cols-2 gap-4 relative z-10">
-              <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-obsidian-muted block mb-1">Rendimiento</span>
+              <div className="grid grid-cols-2 gap-4 relative z-10">
+                <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-obsidian-muted block mb-1">Rendimiento</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl font-bold">{agent.performance}%</span>
+                    <div className="flex-1 h-1.5 bg-obsidian-border rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-obsidian-primary rounded-full transition-all duration-1000"
+                        style={{ width: `${agent.performance}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-obsidian-muted block mb-1">Tareas completadas</span>
+                  <span className="text-xl font-bold">{(agent.tasks || 0).toLocaleString()}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t border-obsidian-border relative z-10">
+                <span className="text-xs text-obsidian-muted flex items-center gap-1.5">
+                  <RefreshCw className="w-3 h-3" />
+                  Última actividad: {agent.lastActive}
+                </span>
                 <div className="flex items-center gap-2">
-                  <span className="text-xl font-bold">{agent.performance}%</span>
-                  <div className="flex-1 h-1.5 bg-obsidian-border rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-obsidian-primary rounded-full transition-all duration-1000"
-                      style={{ width: `${agent.performance}%` }}
-                    />
-                  </div>
+                  {agent.status === 'Activo' ? (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleAgentStatus(agent.id, agent.status);
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-rose-500/10 text-rose-500 rounded-xl text-xs font-bold hover:bg-rose-500/20 transition-colors"
+                    >
+                      <Pause className="w-3 h-3" />
+                      Detener
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleAgentStatus(agent.id, agent.status);
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-500 rounded-xl text-xs font-bold hover:bg-emerald-500/20 transition-colors"
+                    >
+                      <Play className="w-3 h-3" />
+                      Iniciar
+                    </button>
+                  )}
                 </div>
               </div>
-              <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-obsidian-muted block mb-1">Tareas completadas</span>
-                <span className="text-xl font-bold">{(agent.tasks || 0).toLocaleString()}</span>
-              </div>
             </div>
-
-            <div className="flex items-center justify-between pt-4 border-t border-obsidian-border relative z-10">
-              <span className="text-xs text-obsidian-muted flex items-center gap-1.5">
-                <RefreshCw className="w-3 h-3" />
-                Última actividad: {agent.lastActive}
-              </span>
-              <div className="flex items-center gap-2">
-                {agent.status === 'Activo' ? (
-                  <button 
-                    onClick={() => toggleAgentStatus(agent.id, agent.status)}
-                    className="flex items-center gap-2 px-4 py-2 bg-rose-500/10 text-rose-500 rounded-xl text-xs font-bold hover:bg-rose-500/20 transition-colors"
-                  >
-                    <Pause className="w-3 h-3" />
-                    Detener
-                  </button>
-                ) : (
-                  <button 
-                    onClick={() => toggleAgentStatus(agent.id, agent.status)}
-                    className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-500 rounded-xl text-xs font-bold hover:bg-emerald-500/20 transition-colors"
-                  >
-                    <Play className="w-3 h-3" />
-                    Iniciar
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
         ))}
       </div>
 

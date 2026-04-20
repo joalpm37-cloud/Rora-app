@@ -24,6 +24,7 @@ import {
   Check,
   RefreshCw
 } from 'lucide-react';
+import { VoiceCommandCenter } from '../components/dashboard/VoiceCommandCenter';
 
 const StatCard = ({ icon: Icon, label, value, change, trend }: any) => (
   <div className="bg-[#0F2A1A] rounded-2xl border border-obsidian-border p-6 flex flex-col gap-4">
@@ -422,6 +423,8 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      <VoiceCommandCenter />
     </div>
   );
 };
