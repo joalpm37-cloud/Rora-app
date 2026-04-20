@@ -7,6 +7,13 @@
 
 console.log("🛠️  [BOOTSTRAP] Iniciando secuencia de arranque de RORA AI...");
 
+// Diagnóstico de entorno (solo longitudes por seguridad)
+console.log("🔍 [BOOTSTRAP] Verificando secretos...");
+['GEMINI_API_KEY', 'GHL_LOCATION_ID', 'FIREBASE_SERVICE_ACCOUNT_JSON'].forEach(key => {
+    const val = process.env[key] || '';
+    console.log(`📡 [BOOTSTRAP] Variable ${key}: ${val ? `OK (Longitud: ${val.length})` : 'VACÍA ❌'}`);
+});
+
 async function startApp() {
   try {
     // Importamos dinámicamente la aplicación principal

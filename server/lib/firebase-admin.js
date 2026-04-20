@@ -43,5 +43,17 @@ try {
     // No relanzamos el error para permitir que el servidor Express arranque
 }
 
-export const dbAdmin = admin.firestore();
+let dbAdmin = null;
+
+try {
+    if (admin.apps.length > 0) {
+        dbAdmin = admin.firestore();
+    } else {
+        console.warn("⚠️ Firestore Admin: No se puede exportar dbAdmin porque Firebase no está inicializado.");
+    }
+} catch (error) {
+    console.error("❌ ERROR FATAL asignando dbAdmin:", error.message);
+}
+
+export { dbAdmin };
 export default admin;
