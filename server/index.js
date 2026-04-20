@@ -116,7 +116,11 @@ app.get('/api/auth/google/status/:userId', async (req, res) => {
 
 // --- HEALTH CHECK ---
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', version: 'V3.0.0-FLASH', message: 'RORA Backend is live and stable.' });
+  res.json({ 
+    status: 'ok', 
+    version: 'V3.1.0-STABLE', 
+    message: 'RORA Backend - Google Cloud Run optimized deployment active.' 
+  });
 });
 
 // --- GHL PROXY ENDPOINTS ---
