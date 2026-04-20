@@ -4,8 +4,22 @@ dotenv.config();
 import express from 'express';
 import cors from 'cors';
 import fs from 'fs';
+
+// --- ARRANQUE ATÓMICO (Línea 10) ---
+// Abrimos el puerto de inmediato para evitar el timeout de Cloud Run
+const app = express();
+const PORT = process.env.PORT || 8080;
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 RORA Backend is live on port ${PORT}`);
+});
+
+// Importaciones pesadas (Firestore, Agentes, etc.)
+// Nota: En ESM estas se ejecutan antes del código de arriba, pero al ser
+// el mismo archivo, Node.js las procesa en orden de aparición.
 import { db } from './lib/firebase.js';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc } from 'firebase/firestore';
+import admin from './lib/firebase-admin.js';
 
 // Agentes
 import { procesarMensajeRora } from './rora/agentes/rora-central.js';
@@ -29,10 +43,6 @@ import {
 import reportsRouter from './routes/reports.js';
 import { generarDossierPDF } from './rora/utils/pdf-generator.js';
 import { getAuthUrl, handleAuthCallback } from './rora/utils/google-api.js';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import admin from './lib/firebase-admin.js';
-
-const app = express();
 
 app.use(cors({
   origin: [
@@ -115,9 +125,13 @@ app.get('/api/auth/google/status/:userId', async (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 
-    version: 'V3.2.0-ATOMIC', 
-    message: 'RORA Backend - Atomic Loader Active.' 
+    version: 'V3.3.0-PHOENIX', 
+    message: 'RORA Backend - Fusion Core Active.' 
   });
+});
+
+app.get('/', (req, res) => {
+  res.send('<h1>RORA AI Backend</h1><p>Status: Operating</p>');
 });
 
 // --- GHL PROXY ENDPOINTS ---
@@ -299,5 +313,3 @@ app.post('/api/sales-agent/mensaje', async (req, res) => {
     res.status(500).json({ error: 'Error interno en el servidor' });
   }
 });
-
-export default app;
