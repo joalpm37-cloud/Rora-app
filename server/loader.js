@@ -3,46 +3,37 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+/**
+ * 🚀 RORA LOADER (Atomic Binding)
+ * Abre el puerto de inmediato para evitar el timeout de Cloud Run.
+ */
 const loader = express();
 const PORT = process.env.PORT || 8080;
 
-// 1. ABRIR EL PUERTO INSTANTÁNEAMENTE
-// Esto satisface a Google Cloud Run en milisegundos.
-const bridge = loader.listen(PORT, '0.0.0.0', () => {
-    console.log(`📡 [LOADER] Puerto ${PORT} asegurado. Avisando a Cloud Run...`);
+// Bindeo instantáneo (Seguridad para Cloud Run)
+loader.listen(PORT, '0.0.0.0', () => {
+    console.log(`📡 [LOADER] Puerto ${PORT} asegurado.`);
 });
 
-// 2. HEALTH CHECK BÁSICO (Para que Google vea que respondemos)
-loader.get('/api/health', (req, res) => {
-    res.json({ 
-        status: 'booting', 
-        message: 'RORA Phoenix is rising...', 
-        timestamp: new Date().toISOString() 
-    });
+// Ruta de "Supervivencia" (Responde aunque el núcleo falle)
+loader.get('/loader-status', (req, res) => {
+    res.json({ status: 'alive', mode: 'atomic_loader' });
 });
 
-// 3. CARGA DINÁMICA DE LA APP REAL
-// Al usar import() dentro de una función, evitamos el "bloqueo" de hoisting del ESM.
-async function bootstrap() {
+// CARGA DEL NÚCLEO RORA
+async function loadCore() {
     try {
-        console.log("📦 [LOADER] Iniciando carga de módulos pesados (RORA Core)...");
-        
-        // Importamos dinámicamente el index.js real
-        // Nota: El index.js real ya no debe intentar llamar a app.listen() por su cuenta,
-        // o debe detectar si ya hay un puerto abierto.
+        console.log("📦 [LOADER] Importando RORA Core...");
         const { default: app } = await import('./index.js');
         
-        // 4. TRANSFERENCIA DE RUTAS
-        // Inyectamos la app real dentro del cargador que ya tiene el puerto.
+        // Acoplamos las rutas de index.js directamente al cargador
         loader.use(app);
         
-        console.log("✅ [LOADER] RORA Core acoplado con éxito al puerto activo.");
+        console.log("✅ [LOADER] Módulos cargados y rutas acopladas.");
     } catch (err) {
-        console.error("🚨 [LOADER] Error fatal cargando RORA Core:");
+        console.error("🚨 [LOADER] Error FATAL cargando index.js:");
         console.error(err);
-        // No salimos del proceso para que el contenedor no entre en bucle de reinicio infinito
-        // al menos así podemos entrar por SSH o ver logs.
     }
 }
 
-bootstrap();
+loadCore();
