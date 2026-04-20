@@ -63,6 +63,10 @@ export interface Property {
   privateNotes: string;
   status: PropertyStatus;
   matchedLeads: string[];
+  // Marketing & Vibe (Phase 3.8)
+  videoStyle?: string;
+  targetAudience?: string;
+  usp?: string;
   createdAt: Timestamp | Date;
 }
 

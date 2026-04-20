@@ -14,6 +14,7 @@ import { Properties } from './pages/Properties';
 import { AIAgents } from './pages/AIAgents';
 import { Campaigns } from './pages/Campaigns';
 import { Content } from './pages/Content';
+import { Integrations } from './pages/Integrations';
 import { Settings } from './pages/Settings';
 import { More } from './pages/More';
 import { Login } from './pages/Login';
@@ -88,6 +89,7 @@ export default function App() {
           <Route path="/campaigns" element={<Campaigns />} />
           <Route path="/content" element={<Content />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/integrations" element={<Integrations />} />
           <Route path="/command-center" element={<CommandCenter />} />
           <Route path="/more" element={<More />} />
           <Route path="*" element={<Navigate to="/" replace />} />

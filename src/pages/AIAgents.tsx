@@ -91,10 +91,11 @@ export const AIAgents: React.FC = () => {
         const agentsSnap = await getDocs(query(collection(db, 'agentes-config'), limit(1)));
         if (agentsSnap.empty) {
           const initialAgentsData = [
-            { id: "crm-agent", name: "CRM Agent", description: "Califica leads, agenda visitas y gestiona el seguimiento automático.", status: "Activo", performance: 98, tasks: 1284, lastActive: "Hace 2 min" },
-            { id: "performance-agent", name: "Performance Agent", description: "Optimiza campañas de marketing y analiza el CPL en tiempo real.", status: "Activo", performance: 94, tasks: 45, lastActive: "Hace 15 min" },
-            { id: "content-agent", name: "Content Agent", description: "Genera copys, imágenes y estrategias de contenido para redes sociales.", status: "Mantenimiento", performance: 88, tasks: 12, lastActive: "Hace 2h" },
-            { id: "explorer-agent", name: "Explorer Agent", description: "Busca nuevas oportunidades de mercado y analiza la competencia.", status: "Inactivo", performance: 0, tasks: 0, lastActive: "Ayer" }
+            { id: "rora-central", name: "Rora Central", description: "El orquestador. Coordina a todos los agentes y se comunica directamente con el usuario.", status: "Activo", performance: 100, tasks: 520, lastActive: "Ahora mismo" },
+            { id: "lira-sales", name: "Lira", description: "Ventas y Atención. Califica leads con BANT y entrega huecos de agenda del asesor.", status: "Activo", performance: 98, tasks: 1284, lastActive: "Hace 2 min" },
+            { id: "lumen-content", name: "Lumen", description: "Gestión de Contenido. Transforma fotos de propiedades en guiones y piezas creativas.", status: "Activo", performance: 92, tasks: 215, lastActive: "Hace 15 min" },
+            { id: "aura-ads", name: "Aura", description: "Estratega de Meta. Recibe el contenido de Lumen y lo publica/optimiza en Meta Ads.", status: "Inactivo", performance: 0, tasks: 0, lastActive: "Esperando contenido" },
+            { id: "atlas-explorer", name: "Atlas", description: "Buscador de Alternativas. Filtra el inventario interno cuando Lira no cierra la cita.", status: "Activo", performance: 85, tasks: 142, lastActive: "Ayer" }
           ];
           for (let a of initialAgentsData) {
             await addDoc(collection(db, 'agentes-config'), {

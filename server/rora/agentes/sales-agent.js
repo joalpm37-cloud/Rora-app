@@ -1,77 +1,80 @@
-import { llamarClaude } from '../utils/claude-api.js';
-import SYSTEM_PROMPT_SALES from '../prompts/system-prompt-sales.js';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { llamarGemini } from '../utils/gemini-api.js';
 import { db } from '../../lib/firebase.js';
+import { collection, doc, updateDoc, arrayUnion, serverTimestamp, getDoc } from 'firebase/firestore';
+import { generarPropuestasCita } from '../utils/scheduler-service.js';
+import { getFreeBusy } from '../utils/google-api.js';
 
-export async function procesarMensajeSalesAgent({ contactId, nombre, canal, mensaje, historial = [], isAutomated = false }) {
+const systemPromptLira = `
+Eres "Lira", el agente experto en ventas y atención al cliente de RORA. 
+Tu objetivo es calificar leads basándote en el modelo BANT (Presupuesto, Autoridad, Necesidad, Tiempo).
+Hablas de forma profesional, cercana y persuasiva.
+
+Analiza la conversación y los datos actuales para devolver un JSON:
+{
+  "clasificacion": "nuevo" | "calificado" | "hot" | "descartado",
+  "score": 0-100,
+  "bant": {
+    "presupuesto": number,
+    "zona": string,
+    "habitaciones": number,
+    "necesidad": string
+  },
+  "resumen": "string",
+  "siguiente_accion": "string"
+}
+`;
+
+export async function procesarConversacionConLira(leadId, conversacionActual) {
   try {
-    // 1. CORTOCIRCUITO: Detección de Ecos
-    // Si el mensaje actual es idéntico a la última respuesta del agente, ignoramos.
-    // a. Construye el contexto para Gemini
-    const contextoConstruido = `Canal: ${channel || "desconocido"}. Nombre del lead: ${nombre || "Prospecto"}.\nMensaje del lead: ${mensaje}`;
+    const leadRef = doc(db, 'leads', leadId);
     
-    // b. Llama a llamarGemini
-    const respuestaGemini = await llamarGemini(SYSTEM_PROMPT_SALES, contextoConstruido, historial);
+    // 1. Llamar a Lira para calificar
+    const userPrompt = `Conversación actual: ${JSON.stringify(conversacionActual)}`;
+    const respuesta = await llamarGemini(systemPromptLira, userPrompt);
     
-    if (!respuestaGemini) {
-      throw new Error("Respuesta nula desde Gemini API.");
-    }
+    let result = respuesta;
+    if (result.includes('```json')) result = result.split('```json')[1].split('```')[0].trim();
+    const data = JSON.parse(result);
 
-    // c. Toma la respuesta de Gemini y extrae los datos clave
-    const clasificacionMatch = respuestaGemini.match(/CLASIFICACION:\s*(.*)/i);
-    const siguienteMatch = respuestaGemini.match(/SIGUIENTE:\s*(.*)/i);
-    
-    const clasificacion = clasificacionMatch ? clasificacionMatch[1].trim() : "necesita-info";
-    const siguientePaso = siguienteMatch ? siguienteMatch[1].trim() : "pedir-mas-info";
-    
-    const respuestaLimpia = respuestaGemini
-      .replace(/CLASIFICACION:.*(\r?\n|$)/ig, '')
-      .replace(/SIGUIENTE:.*(\r?\n|$)/ig, '')
-      .trim();
-
-    // d. Reconstruir la conversación
-    const now = new Date();
-    const conversacionGuardar = [
-      ...historial.map(m => ({ 
-        sender: m.role === 'user' ? 'lead' : 'agent',
-        text: m.content || m.text,
-        timestamp: now // Aproximado para historial
-      })),
-      { sender: 'lead', text: mensaje, timestamp: now },
-      { sender: 'agent', text: respuestaLimpia, timestamp: new Date() }
-    ];
-
-    // e. Intentar guardar en Firebase con Admin
-    if (contactId) {
+    // 2. Si está calificado/hot, disparar agendamiento bajo el nombre de Lira
+    let extraActions = [];
+    if (data.clasificacion === 'calificado' || data.clasificacion === 'hot') {
       try {
-        const docRef = dbAdmin.collection('sales-conversations').doc(String(contactId));
-        await docRef.set({
-          contactId,
-          channel: channel || "desconocido",
-          nombre: nombre || "Prospecto",
-          conversacion: conversacionGuardar,
-          clasificacion,
-          ultimaActualizacion: new Date()
-        }, { merge: true });
-        console.log(`✅ Conversación persistida con éxito en Firestore para Lead: ${contactId}`);
-      } catch (fbError) {
-        console.error("❌ Fallo persistencia en Firebase (Admin) en servidor:", fbError.message);
+        const leadSnap = await getDoc(leadRef);
+        const leadData = leadSnap.data();
+        const userId = leadData.assignedTo || 'default-user'; // ID del asesor
+
+        // Obtener ocupación del calendario
+        const now = new Date();
+        const nextWeek = new Date();
+        nextWeek.setDate(now.getDate() + 7);
+        const busySlots = await getFreeBusy(userId, now, nextWeek);
+
+        // Generar propuestas vía el servicio de agendamiento
+        const slotsResponse = await generarPropuestasCita(busySlots, data.bant);
+        
+              data: sugerencia.propuestas,
+              status: 'pending',
+              timestamp: new Date()
+            })
+          });
+          console.log("✅ Sugerencia de Chronos añadida al timeline.");
+        }
+      } catch (err) {
+        console.error("⚠️ Falló Chronos:", err.message);
       }
     }
 
     return {
       respuesta: respuestaLimpia,
       clasificacion,
-      siguientePaso,
       contactId
     };
   } catch (error) {
-    console.error("Error procesando mensaje en Sales Agent (Producción):", error);
+    console.error("❌ Error en Sales Agent:", error);
     return {
-      respuesta: "Me estoy reiniciando en este momento, dame unos minutos. 😊",
-      clasificacion: "necesita-info",
-      siguientePaso: "pedir-mas-info",
-      contactId
+      respuesta: "Hola, estoy procesando tu solicitud. Un asesor te contactará pronto. 😊",
+      clasificacion: "necesita-info"
     };
   }
 }

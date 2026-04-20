@@ -7,37 +7,32 @@ export async function buscarPropiedadesParaCliente(datosCliente) {
   const { nombreCliente, presupuestoMax, zonaPreferida, habitacionesMin, caracteristicas } = datosCliente;
 
   try {
-    // Paso 1: Traer propiedades disponibles
+    // Paso 1: Traer propiedades del inventario interno
     const propiedadesRef = collection(db, 'propiedades');
-    const q = query(propiedadesRef, where("estado", "==", "activa"));
-    let snap;
-    try {
-        snap = await getDocs(q);
-    } catch (e) {
-        snap = await getDocs(propiedadesRef);
-    }
-    
-    const propiedadesDisponibles = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(p => !p.estado || p.estado === 'activa');
+    // Traemos de forma proactiva para que el agente filtre en base al contexto
+    const snap = await getDocs(propiedadesRef);
+    const inventario = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    // Paso 2: Construir mensaje
+    // Paso 2: Filtro inicial por estado activo (si aplica)
+    const disponibles = inventario.filter(p => !p.estado || p.estado === 'activa');
+
+    // Paso 3: Construir contexto para Gemini
     const promptUsuario = `
-Client Profile:
-- Nombre: ${nombreCliente}
-- Presupuesto Máximo: ${presupuestoMax || 'No definido'}
-- Zona Preferida: ${zonaPreferida || 'Cualquiera'}
-- Habitaciones Mínimas: ${habitacionesMin || 0}
-- Características Clave: ${(caracteristicas || []).join(', ')}
+Available Properties in RORA Database (Current Inventory):
+${JSON.stringify(disponibles, null, 2)}
 
-Available Properties in RORA Database:
-${JSON.stringify(propiedadesDisponibles, null, 2)}
+Requirements for ${nombreCliente}:
+- Presupuesto Max: €${presupuestoMax || 'No definido'}
+- Zona: ${zonaPreferida || 'Marbella/Costa del Sol'}
+- Habitaciones min: ${habitacionesMin || 0}
+- Preferencias: ${(caracteristicas || []).join(', ')}
 
-Por favor elabora el dossier siguiendo el formato JSON especificado.
+Selecciona las TOP 3 que mejor encajen.
 `;
 
-    // Paso 3: Llama a Gemini
     const respuesta = await llamarGemini(systemPromptExplorer, promptUsuario);
 
-    // Paso 4: Parsea JSON
+    // Paso 4: Parsea JSON y garantiza el Top 3
     let jsonStr = respuesta;
     if (jsonStr.startsWith("```json")) {
       jsonStr = jsonStr.replace(/^```json/, "").replace(/```$/, "").trim();
@@ -45,45 +40,39 @@ Por favor elabora el dossier siguiendo el formato JSON especificado.
       jsonStr = jsonStr.replace(/^```/, "").replace(/```$/, "").trim();
     }
 
-    return JSON.parse(jsonStr);
+    const finalResult = JSON.parse(jsonStr);
+    
+    // Validar que no hay más de 3
+    if (finalResult.propiedades_encontradas) {
+        finalResult.propiedades_encontradas = finalResult.propiedades_encontradas.slice(0, 3);
+    }
+
+    return finalResult;
   } catch (error) {
-    console.warn("Fallo al contactar con Gemini o parsear. Filtro manual fallback activado.", error.message);
+    console.error("❌ Atlas falló, usando filtro estricto manual.", error.message);
     
-    // Fallback manual sin IA
-    let props = [];
-    try {
-        const snap = await getDocs(collection(db, 'propiedades'));
-        props = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    } catch(e) {}
+    // Fallback Manual 
+    const snap = await getDocs(collection(db, 'propiedades'));
+    const props = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     
-    const encajan = props.filter(p => {
-        if (p.estado && p.estado !== 'activa') return false;
-        const precioProp = Number(p.precio || p.price || 0);
-        const pres = Number(presupuestoMax || 0);
-        if (pres > 0 && precioProp > pres) return false;
-        
-        return true;
-    }).slice(0, 5);
+    const coinciden = props.filter(p => {
+        const pPrecio = Number(p.precio || 0);
+        const pMax = Number(presupuestoMax || 999999999);
+        return pPrecio <= pMax;
+    }).slice(0, 3);
 
     return {
-      "perfil_cliente": {
-        "nombre": nombreCliente || "Cliente",
-        "presupuesto_max": presupuestoMax || 0,
-        "zona_preferida": zonaPreferida || "Cualquiera",
-        "caracteristicas_clave": caracteristicas || []
-      },
-      "propiedades_encontradas": encajan.map(p => ({
+      "perfil_cliente": { "nombre": nombreCliente, "presupuesto_max": presupuestoMax },
+      "propiedades_encontradas": coinciden.map(p => ({
         "id": p.id,
-        "nombre": p.titulo || p.title || "Propiedad",
-        "ubicacion": p.zona || p.location || "Ubicación desconocida",
-        "precio": p.precio || p.price || 0,
-        "compatibilidad": 85,
-        "razon_compatibilidad": "Encaja dentro del presupuesto.",
-        "caracteristicas": p.caracteristicas || [],
-        "url_imagen": p.imagen || p.image || null,
-        "precio_minimo_aceptado": p.precio_minimo || null
+        "nombre": p.nombre || p.address || "Propiedad Rora",
+        "ubicacion": p.ubicacion || p.zone || "No especificada",
+        "precio": p.precio || 0,
+        "compatibilidad": 90,
+        "razon_compatibilidad": "Filtro manual por presupuesto.",
+        "url_imagen": p.url_imagen || p.coverPhoto || "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&q=80&w=800"
       })),
-      "mensaje_para_cliente": `Hola ${nombreCliente}, he seleccionado las mejores opciones que se ajustan a tu presupuesto y requisitos.`
+      "mensaje_para_cliente": `Hola ${nombreCliente}, he encontrado estas 3 opciones que encajan perfectamente con lo que buscas.`
     };
   }
 }

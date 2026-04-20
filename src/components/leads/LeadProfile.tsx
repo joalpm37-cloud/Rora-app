@@ -24,22 +24,24 @@ export const LeadProfile: React.FC<LeadProfileProps> = ({ lead, onClose, onEdit 
   useEffect(() => {
     if (!lead?.id) return;
     
-    const docRef = doc(db, 'sales-conversations', lead.id);
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+    // Listener 1: Conversaciones y Eventos
+    const convRef = doc(db, 'sales-conversations', lead.id);
+    const unsubConv = onSnapshot(convRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
         setSalesData(data);
         
-        // Mapear conversación + eventos de sistema a la Timeline
         const msgEvents = (data.conversacion || []).map((m: any, i: number) => ({
           id: `msg-${i}`,
           type: 'message',
           sender: m.sender || (m.role === 'agente' ? 'agent' : 'lead'),
+          agentName: m.agentName,
           text: m.text || m.content,
+          data: m.data,
           timestamp: m.timestamp?.toDate ? m.timestamp.toDate() : new Date(),
+          status: m.status || (m.sender === 'agent' && m.status === 'pending' ? 'pending' : 'completed')
         }));
 
-        // Simulación de eventos de sistema para demo de Phase 2
         const systemEvents = [];
         if (data.clasificacion === 'calificado') {
           systemEvents.push({
@@ -56,8 +58,116 @@ export const LeadProfile: React.FC<LeadProfileProps> = ({ lead, onClose, onEdit 
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubConv();
+      unsubLead();
+    };
   }, [lead.id]);
+
+  const handleApproveTimeline = async (eventId: string, textOrData: string) => {
+    if (!lead?.id) return;
+    try {
+      const index = parseInt(eventId.split('-')[1]);
+      const event = salesData.conversacion[index];
+
+      // Caso especial: Agendamiento con Lira (Citas)
+      if (event.agentName === 'Lira' && event.data) {
+        const slot = JSON.parse(textOrData);
+        // Llamar al servidor para agendar
+        await fetch('/api/agents/scheduler/book', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: lead.assignedTo,
+            leadId: lead.id,
+            appointment: slot,
+            leadEmail: lead.email || 'joalpm37@gmail.com'
+          })
+        });
+        console.log("✅ Cita agendada via Lira");
+      } 
+      // Caso especial: Publicación de Lumen (vía Aura)
+      else if (event.agentName === 'Lumen' && textOrData === 'LUMEN_APPROVAL') {
+        // Simular envío a Meta vía Aura
+        await addDoc(collection(db, 'logs-agentes'), {
+          agente: "Aura",
+          tipo: "completado",
+          mensaje: `Publicando anuncio en Meta Ads para ${lead.nombre || 'Lead'}. Contenido aprobado de Lumen.`,
+          timestamp: serverTimestamp()
+        });
+        console.log("🚀 Contenido enviado a Meta Ads vía Aura");
+      }
+      // Caso especial: Renderizado de Video Remotion
+      else if (event.agentName === 'Lumen' && textOrData === 'LUMEN_VIDEO_RENDER') {
+        const content = arguments[2]; // Los nuevos datos pasados por ActivityTimeline
+        
+        // 1. Marcar como renderizando en Firebase
+        const convRef = doc(db, 'sales-conversations', lead.id);
+        const renderingConv = [...salesData.conversacion];
+        renderingConv[index] = { ...renderingConv[index], status: 'rendering' };
+        await updateDoc(convRef, { conversacion: renderingConv });
+
+        try {
+          // 2. Llamar al servidor para renderizar
+          const response = await fetch('/api/video/render', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              propiedadId: lead.id, // o el ID de la propiedad real si se tiene
+              videoConfig: content.videoConfig
+            })
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            // 3. Completado con URL
+            const finalConv = [...salesData.conversacion];
+            finalConv[index] = { 
+              ...finalConv[index], 
+              status: 'completed',
+              data: JSON.stringify({ ...content, videoUrl: result.url })
+            };
+            await updateDoc(convRef, { conversacion: finalConv });
+            return;
+          }
+        } catch (err) {
+          console.error("Error rendering video:", err);
+          // Revertir a pending si falla
+          const failConv = [...salesData.conversacion];
+          failConv[index] = { ...failConv[index], status: 'pending' };
+          await updateDoc(convRef, { conversacion: failConv });
+          return;
+        }
+      }
+      else {
+        // Enviar mensaje normal a GHL
+        await sendGhlMessage(lead.id, textOrData);
+      }
+      
+      // Actualizar estado en Firebase a 'completed'
+      const convRef = doc(db, 'sales-conversations', lead.id);
+      const newConv = [...salesData.conversacion];
+      newConv[index] = { ...newConv[index], status: 'completed' };
+      await updateDoc(convRef, { conversacion: newConv });
+      
+    } catch (err) {
+      console.error("Error approving event:", err);
+    }
+  };
+
+  const handleRejectTimeline = async (eventId: string) => {
+    if (!lead?.id) return;
+    try {
+      const convRef = doc(db, 'sales-conversations', lead.id);
+      const index = parseInt(eventId.split('-')[1]);
+      const newConv = [...salesData.conversacion];
+      newConv[index] = { ...newConv[index], status: 'ignored' };
+      await updateDoc(convRef, { conversacion: newConv });
+    } catch (err) {
+      console.error("Error rejecting event:", err);
+    }
+  };
 
   const handleApproveAtlas = async (propData: any) => {
     if (!lead?.id) return;
@@ -172,7 +282,11 @@ export const LeadProfile: React.FC<LeadProfileProps> = ({ lead, onClose, onEdit 
               <span className="text-[9px] text-obsidian-muted">Sincronizado GHL</span>
             </div>
           </h4>
-          <ActivityTimeline events={events} />
+          <ActivityTimeline 
+            events={events} 
+            onApprove={handleApproveTimeline}
+            onReject={handleRejectTimeline}
+          />
         </div>
       </div>
 

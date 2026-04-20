@@ -11,7 +11,8 @@ import {
   Megaphone, 
   FileText, 
   Settings,
-  LogOut
+  LogOut,
+  Zap
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -32,6 +33,7 @@ const navItems = [
   { icon: Megaphone, label: 'Campañas', path: '/campaigns' },
   { icon: FileText, label: 'Contenido', path: '/content' },
   { icon: Settings, label: 'Configuración', path: '/settings' },
+  { icon: Zap, label: 'Integraciones', path: '/integrations' },
 ];
 
 export const Sidebar: React.FC = () => {

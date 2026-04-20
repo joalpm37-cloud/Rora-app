@@ -4,12 +4,14 @@ import dotenv from 'dotenv';
 import { db } from './lib/firebase.js';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
-// Agents
+// Agentes
 import { procesarMensajeRora } from './rora/agentes/rora-central.js';
-import { procesarMensajeSalesAgent } from './rora/agentes/sales-agent.js';
+import { procesarConversacionConLira } from './rora/agentes/sales-agent.js';
 import { analizarCampanaActiva, crearEstructuraCampana } from './rora/agentes/performance-agent.js';
-import { procesarSolicitudContenido } from './rora/agentes/content-agent.js';
-import { buscarPropiedadesParaCliente } from './rora/agentes/explorer-agent.js';
+import { generarContenidoConLumen } from './rora/agentes/content-agent.js';
+import { buscarAlternativasConAtlas } from './rora/agentes/explorer-agent.js';
+import { createCalendarEvent, sendGmail } from './rora/utils/google-api.js';
+import { renderPropiedadVideo } from './rora/video/videoRenderer.js';
 
 // Utils
 import { 
@@ -23,8 +25,18 @@ import {
   crearCitaGHL
 } from './rora/utils/ghl-api.js';
 import { generarDossierPDF } from './rora/utils/pdf-generator.js';
+import { getAuthUrl, handleAuthCallback } from './rora/utils/google-api.js';
+import { doc, getDoc } from 'firebase/firestore';
 
-// ... (endpoints)
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 10000;
+
+app.use(cors()); 
+app.use(express.json());
+
+// --- ENDPOINTS ---
 
 app.post('/api/utils/pdf/generate', async (req, res) => {
   try {
@@ -36,13 +48,55 @@ app.post('/api/utils/pdf/generate', async (req, res) => {
   }
 });
 
-dotenv.config();
+app.post('/api/properties', async (req, res) => {
+  try {
+    const propertyData = {
+      ...req.body,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+    const docRef = await addDoc(collection(db, 'propiedades'), propertyData);
+    res.json({ success: true, id: docRef.id });
+  } catch (error) {
+    console.error('Error in POST /api/properties:', error);
+    res.status(500).json({ error: 'Error saving property' });
+  }
+});
 
-const app = express();
-const PORT = process.env.PORT || 10000;
+// --- GOOGLE AUTH ENDPOINTS ---
 
-app.use(cors()); 
-app.use(express.json());
+app.get('/api/auth/google/url', (req, res) => {
+  const { userId } = req.query;
+  if (!userId) return res.status(400).json({ error: 'userId is required' });
+  const url = getAuthUrl(userId);
+  res.json({ url });
+});
+
+app.get('/api/auth/google/callback', async (req, res) => {
+  const { code, state: userId } = req.query;
+  if (!code || !userId) return res.status(400).send('Missing code or state');
+
+  try {
+    await handleAuthCallback(code, userId);
+    // Redirigir de vuelta al frontend (ajustar URL según entorno)
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    res.redirect(`${frontendUrl}/integrations?status=success`);
+  } catch (error) {
+    console.error('Error in Google callback:', error);
+    res.status(500).send('Authentication failed');
+  }
+});
+
+app.get('/api/auth/google/status/:userId', async (req, res) => {
+  try {
+    const docRef = doc(db, 'user-integrations', req.params.userId);
+    const snap = await getDoc(docRef);
+    const isConnected = snap.exists() && snap.data().google?.status === 'active';
+    res.json({ connected: isConnected, email: snap.data()?.google?.tokens?.email });
+  } catch (error) {
+    res.status(500).json({ error: 'Error checking status' });
+  }
+});
 
 // --- HEALTH CHECK ---
 app.get('/api/health', (req, res) => {
@@ -158,7 +212,7 @@ app.post('/api/agents/performance/campaign/create', async (req, res) => {
 
 app.post('/api/agents/content/generate', async (req, res) => {
   try {
-    const result = await procesarSolicitudContenido(req.body);
+    const result = await generarContenidoConLumen(req.body);
     res.json(result);
   } catch (error) {
     console.error('Error in /api/agents/content/generate:', error);
@@ -166,9 +220,26 @@ app.post('/api/agents/content/generate', async (req, res) => {
   }
 });
 
+app.post('/api/video/render', async (req, res) => {
+  const { propiedadId, videoConfig } = req.body;
+  
+  if (!propiedadId || !videoConfig) {
+    return res.status(400).json({ error: 'Faltan datos de propiedad o configuración' });
+  }
+
+  try {
+    console.log(`🎬 Petición de renderizado para propiedad: ${propiedadId}`);
+    const videoUrl = await renderPropiedadVideo(propiedadId, videoConfig);
+    res.json({ success: true, url: videoUrl });
+  } catch (error) {
+    console.error('Error in /api/video/render:', error);
+    res.status(500).json({ error: 'Error rendering video' });
+  }
+});
+
 app.post('/api/agents/explorer/search', async (req, res) => {
   try {
-    const result = await buscarPropiedadesParaCliente(req.body);
+    const result = await buscarAlternativasConAtlas(req.body);
     res.json(result);
   } catch (error) {
     console.error('Error in /api/agents/explorer/search:', error);
@@ -215,19 +286,55 @@ app.post('/api/sales-agent/mensaje', async (req, res) => {
 
     console.log(`📥 [Prod] Procesando mensaje de ${nombre || contactId} canal: ${finalChannel}`);
 
-    const resultado = await procesarMensajeSalesAgent({
-      contactId,
-      nombre,
-      telefono,
-      channel: finalChannel,
-      mensaje,
-      historial: historial || []
-    });
+    const resultado = await procesarConversacionConLira(
+      contactId || req.body.leadId,
+      historial || [{ sender: 'lead', text: mensaje }]
+    );
 
-    res.json(resultado);
+    res.json({ success: true, ...resultado });
   } catch (error) {
     console.error('❌ Error en webhook:', error);
     res.status(500).json({ error: 'Error interno en el servidor' });
+  }
+});
+
+// --- SCHEDULER AGENT ---
+
+app.post('/api/agents/scheduler/suggest', async (req, res) => {
+  const { userId, leadData } = req.body;
+  try {
+    const result = await sugerirCitasParaLead(userId, leadData);
+    res.json(result);
+  } catch (error) {
+    console.error('Error in Scheduler Agent:', error);
+    res.status(500).json({ error: 'Error in Scheduler Agent' });
+  }
+});
+
+app.post('/api/agents/scheduler/book', async (req, res) => {
+  const { userId, leadId, appointment, leadEmail } = req.body;
+  try {
+    const event = {
+      summary: `Visita Inmobiliaria: ${appointment.descripcion}`,
+      description: `Cita agendada via RORA AI para el lead ${leadId}`,
+      start: { dateTime: `${appointment.fecha}T${appointment.hora_inicio}:00`, timeZone: 'Europe/Madrid' },
+      end: { dateTime: `${appointment.fecha}T${appointment.hora_fin}:00`, timeZone: 'Europe/Madrid' },
+      attendees: [{ email: leadEmail }]
+    };
+
+    const calendarEvent = await createCalendarEvent(userId, event);
+    
+    // Notificación via Gmail
+    await sendGmail(userId, {
+      to: leadEmail,
+      subject: 'Confirmación de Visita Inmobiliaria',
+      body: `<h1>Cita Confirmada</h1><p>Tu visita para <b>${appointment.descripcion}</b> ha sido agendada para el ${appointment.fecha} a las ${appointment.hora_inicio}.</p>`
+    });
+
+    res.json({ success: true, event: calendarEvent });
+  } catch (error) {
+    console.error('Error booking appointment:', error);
+    res.status(500).json({ error: 'Error booking appointment' });
   }
 });
 
