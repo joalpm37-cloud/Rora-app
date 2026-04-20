@@ -11,7 +11,6 @@ env:
   REGION: us-central1
   SERVICE_NAME: rora-backend
   AR_REPOSITORY: rora-repo
-  PORT: 8080
 
 jobs:
   deploy:
