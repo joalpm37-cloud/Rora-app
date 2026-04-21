@@ -11,5 +11,20 @@ const firebaseConfig = {
   measurementId: "G-JYBGG504E3"
 };
 
-export const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+let _app = null;
+let _db = null;
+
+// Lazy Loaders
+export const getApp = () => {
+  if (!_app) _app = initializeApp(firebaseConfig);
+  return _app;
+};
+
+export const getDb = () => {
+  if (!_db) _db = getFirestore(getApp());
+  return _db;
+};
+
+// Retrocompatibilidad
+export const app = getApp();
+export const db = getDb();
