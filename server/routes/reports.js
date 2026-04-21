@@ -1,5 +1,5 @@
 import express from 'express';
-import { db } from '../lib/firebase.js';
+import { getDb } from '../lib/firebase.js';
 import { 
   collection, 
   query, 
@@ -16,6 +16,7 @@ const router = express.Router();
 
 router.get('/voice', async (req, res) => {
   try {
+    const db = getDb();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);

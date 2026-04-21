@@ -1,5 +1,5 @@
 import { llamarGemini } from '../utils/gemini-api.js';
-import { db } from '../../lib/firebase.js';
+import { getDb } from '../../lib/firebase.js';
 import { collection, doc, updateDoc, arrayUnion, serverTimestamp, getDoc } from 'firebase/firestore';
 import { generarPropuestasCita } from '../utils/scheduler-service.js';
 import { getFreeBusy } from '../utils/google-api.js';
@@ -26,6 +26,7 @@ Analiza la conversación y los datos actuales para devolver un JSON:
 
 export async function procesarConversacionConLira(leadId, conversacionActual) {
   try {
+    const db = getDb();
     const leadRef = doc(db, 'leads', leadId);
     
     // 1. Llamar a Lira para calificar

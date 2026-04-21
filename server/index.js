@@ -3,12 +3,11 @@ dotenv.config();
 
 import express from 'express';
 import cors from 'cors';
-import { db } from './lib/firebase.js';
-import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 
+// --- CONFIGURACIÓN BÁSICA INMEDIATA ---
 app.use(cors({
   origin: [
     'https://rora-app-d98e6.web.app',
@@ -22,29 +21,51 @@ app.use(cors({
 })); 
 app.use(express.json());
 
-// --- HEALTH CHECK (STABLE) ---
+// --- BINDEO DE PUERTO (ANTI-CRASH CLOUD RUN) ---
+// Escuchamos inmediatamente para que Google Cloud Run no mate el contenedor por timeout.
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 RORA Backend (Anti-Crash) listening on port ${PORT}`);
+  console.log(`📡 Deployment Mode: Full Restoration V4.2.0-STABLE`);
+});
+
+// --- ROUTES ---
+
+// Health Check (Inmediato)
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 
-    mode: 'full_restoration_f3_final',
-    version: 'V4.1.0-STABLE'
+    mode: 'anti-crash_lazy_binding',
+    version: 'V4.2.0-STABLE',
+    timestamp: new Date().toISOString()
   });
 });
 
-// --- GOOGLE AUTH ENDPOINTS ---
-import { getAuthUrl, handleAuthCallback } from './rora/utils/google-api.js';
+// Root API Handler (Para evitar 404 en navegadores)
+app.get('/api', (req, res) => {
+  res.json({
+    message: "RORA API Gateway is operational",
+    endpoints: ["/api/health", "/api/rora/chat", "/api/sales-agent/mensaje"],
+    status: "online"
+  });
+});
 
-app.get('/api/auth/google/url', (req, res) => {
-  const { userId } = req.query;
-  if (!userId) return res.status(400).json({ error: 'userId is required' });
-  const url = getAuthUrl(userId);
-  res.json({ url });
+// --- LAZY-LOADED ENDPOINTS ---
+
+// Google Auth
+app.get('/api/auth/google/url', async (req, res) => {
+  try {
+    const { getAuthUrl } = await import('./rora/utils/google-api.js');
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId is required' });
+    res.json({ url: getAuthUrl(userId) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/auth/google/callback', async (req, res) => {
-  const { code, state: userId } = req.query;
-  if (!code || !userId) return res.status(400).send('Missing code or state');
   try {
+    const { handleAuthCallback } = await import('./rora/utils/google-api.js');
+    const { code, state: userId } = req.query;
+    if (!code || !userId) return res.status(400).send('Missing code or state');
     await handleAuthCallback(code, userId);
     const frontendUrl = process.env.FRONTEND_URL || 'https://app.rora.com.es';
     res.redirect(`${frontendUrl}/integrations?status=success`);
@@ -53,35 +74,48 @@ app.get('/api/auth/google/callback', async (req, res) => {
   }
 });
 
-// --- GHL PROXY ---
-import * as ghl from './rora/utils/ghl-api.js';
+// GHL Proxy (Lazy)
 app.get('/api/ghl/contacts', async (req, res) => {
-  try { res.json(await ghl.obtenerContactosGHL(req.query.limit || 20)); } 
-  catch (e) { res.status(500).json({ error: e.message }); }
+  try { 
+    const ghl = await import('./rora/utils/ghl-api.js');
+    res.json(await ghl.obtenerContactosGHL(req.query.limit || 20)); 
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
 app.get('/api/ghl/conversations', async (req, res) => {
-  try { res.json(await ghl.buscarConversacionesGHL()); } 
-  catch (e) { res.status(500).json({ error: e.message }); }
+  try { 
+    const ghl = await import('./rora/utils/ghl-api.js');
+    res.json(await ghl.buscarConversacionesGHL()); 
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
 app.post('/api/ghl/send', async (req, res) => {
-  try { res.json(await ghl.enviarMensajeGHL(req.body.conversationId, req.body.text)); } 
-  catch (e) { res.status(500).json({ error: e.message }); }
+  try { 
+    const ghl = await import('./rora/utils/ghl-api.js');
+    res.json(await ghl.enviarMensajeGHL(req.body.conversationId, req.body.text)); 
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- REPORTS ROUTER ---
-import reportsRouter from './routes/reports.js';
-app.use('/api/reports', reportsRouter);
+// Reports (Lazy)
+app.use('/api/reports', async (req, res, next) => {
+  try {
+    const { default: reportsRouter } = await import('./routes/reports.js');
+    reportsRouter(req, res, next);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
-// --- PROPERTY MANAGEMENT ---
+// Property Management
 app.post('/api/properties', async (req, res) => {
   try {
+    const { getDb } = await import('./lib/firebase.js');
+    const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
     const propertyData = { ...req.body, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
-    const docRef = await addDoc(collection(db, 'propiedades'), propertyData);
+    const docRef = await addDoc(collection(getDb(), 'propiedades'), propertyData);
     res.json({ success: true, id: docRef.id });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- VIDEO & PDF ---
+// Utils
 app.post('/api/utils/pdf/generate', async (req, res) => {
   try {
     const { generarDossierPDF } = await import('./rora/utils/pdf-generator.js');
@@ -93,7 +127,7 @@ app.post('/api/video/render', (req, res) => {
   res.status(503).json({ error: "Motor de video desactivado por contingencia de memoria." });
 });
 
-// --- AGENTES (LAZY) ---
+// Agentes
 app.post('/api/rora/chat', async (req, res) => {
   try {
     const { procesarMensajeRora } = await import('./rora/agentes/rora-central.js');
@@ -127,9 +161,4 @@ app.post('/api/sales-agent/mensaje', async (req, res) => {
     const { procesarConversacionConLira } = await import('./rora/agentes/sales-agent.js');
     res.json({ success: true, ...await procesarConversacionConLira(req.body.contactId, req.body.historial || []) });
   } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// Bindeo rápido para Cloud Run
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 RORA Full Core Restored (Lazy) on port ${PORT}`);
 });

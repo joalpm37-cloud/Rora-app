@@ -1,6 +1,6 @@
 import { llamarGemini } from '../utils/gemini-api.js';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../../lib/firebase.js';
+import { getDb } from '../../lib/firebase.js';
 
 const systemPromptAtlas = `
 Eres "Atlas", el agente buscador de RORA. Tu misión es encontrar las mejores propiedades en nuestro inventario interno que coincidan con el perfil BANT del lead.
@@ -18,6 +18,7 @@ Reglas:
 
 export async function buscarAlternativasConAtlas(leadBant) {
   try {
+    const db = getDb();
     const propsRef = collection(db, 'propiedades');
     const q = query(propsRef, where("status", "==", "active"));
     const snap = await getDocs(q);

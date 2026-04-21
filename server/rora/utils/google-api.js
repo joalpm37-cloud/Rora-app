@@ -1,5 +1,5 @@
 import { google } from 'googleapis';
-import { db } from '../../lib/firebase.js';
+import { getDb } from '../../lib/firebase.js';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
@@ -38,6 +38,7 @@ export async function handleAuthCallback(code, userId) {
   const { tokens } = await oauth2Client.getToken(code);
   
   // Guardar tokens en Firestore
+  const db = getDb();
   const integrationRef = doc(db, 'user-integrations', userId);
   await setDoc(integrationRef, {
     google: {
@@ -54,6 +55,7 @@ export async function handleAuthCallback(code, userId) {
  * Obtiene un cliente autorizado para un usuario específico
  */
 export async function getAuthorizedClient(userId) {
+  const db = getDb();
   const docRef = doc(db, 'user-integrations', userId);
   const snap = await getDoc(docRef);
   

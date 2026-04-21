@@ -25,6 +25,4 @@ export const getDb = () => {
   return _db;
 };
 
-// Retrocompatibilidad
-export const app = getApp();
-export const db = getDb();
+// No auto-init constants here to avoid side effects during import
