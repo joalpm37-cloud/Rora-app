@@ -19,7 +19,7 @@ import { Settings } from './pages/Settings';
 import { More } from './pages/More';
 import { Login } from './pages/Login';
 import { CommandCenter } from './pages/CommandCenter';
-import { useAuth } from './contexts/AuthContext';
+import { useAuth } from './hooks/useAuth';
 import { ShieldCheck, Clock, LogOut } from 'lucide-react';
 import { motion } from 'framer-motion';
 

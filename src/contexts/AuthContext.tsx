@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   User, 
   onAuthStateChanged, 
@@ -8,28 +8,9 @@ import {
 } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
+import { AuthContext } from '../hooks/useAuth';
 
-interface AuthContextType {
-  user: User | null;
-  loading: boolean;
-  isApproved: boolean;
-  loginWithEmail: (email: string, pass: string) => Promise<void>;
-  registerWithEmail: (email: string, pass: string) => Promise<void>;
-  logout: () => Promise<void>;
-}
-
-const WHITELIST = ['joalpm23@gmail.com', 'joalpm37@gmail.com'];
-
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  loading: true,
-  isApproved: false,
-  loginWithEmail: async () => {},
-  registerWithEmail: async () => {},
-  logout: async () => {},
-});
-
-export const useAuth = () => useContext(AuthContext);
+const WHITELIST = ['joalpm23@gmail.com', 'joalpm37@gmail.com', 'joalpm@itse.com.es'];
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -111,7 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider value={{ user, loading, isApproved, loginWithEmail, registerWithEmail, logout }}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 };
