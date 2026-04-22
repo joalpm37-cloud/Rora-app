@@ -2,8 +2,7 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, 
-  MessageSquare,
-  MessageCircle, 
+  MessageSquare, 
   Users, 
   Calendar, 
   Home, 
@@ -11,8 +10,7 @@ import {
   Megaphone, 
   FileText, 
   Settings,
-  LogOut,
-  Zap
+  LogOut
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -25,7 +23,7 @@ function cn(...inputs: ClassValue[]) {
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Panel de control', path: '/' },
-  { icon: MessageSquare, label: 'Mensajes', path: '/chats' },
+  { icon: MessageSquare, label: 'Chats', path: '/chats' },
   { icon: Users, label: 'Contactos', path: '/leads' },
   { icon: Calendar, label: 'Calendario', path: '/calendar' },
   { icon: Home, label: 'Propiedades', path: '/properties' },
@@ -33,7 +31,6 @@ const navItems = [
   { icon: Megaphone, label: 'Campañas', path: '/campaigns' },
   { icon: FileText, label: 'Contenido', path: '/content' },
   { icon: Settings, label: 'Configuración', path: '/settings' },
-  { icon: Zap, label: 'Integraciones', path: '/integrations' },
 ];
 
 export const Sidebar: React.FC = () => {

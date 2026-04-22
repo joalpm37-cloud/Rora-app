@@ -1,96 +1,90 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Logo } from '../components/Logo';
-import { Mail, Lock, Loader2, ArrowRight, UserPlus, LogIn } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Mail, Lock, Loader2 } from 'lucide-react';
 
 export const Login: React.FC = () => {
-  const { loginWithEmail, registerWithEmail } = useAuth();
-  const [isRegistering, setIsRegistering] = useState(false);
+  const { signInWithEmail, registerWithEmail } = useAuth();
+  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     setLoading(true);
-    setError(null);
 
     try {
-      if (isRegistering) {
-        await registerWithEmail(email, password);
+      if (isLogin) {
+        await signInWithEmail(email, password);
       } else {
-        await loginWithEmail(email, password);
+        await registerWithEmail(email, password);
       }
     } catch (err: any) {
-      setError(err.message || 'Ocurrió un error inesperado');
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        setError('Email o contraseña incorrectos.');
+      } else if (err.code === 'auth/email-already-in-use') {
+        setError('Este correo electrónico ya está registrado.');
+      } else if (err.code === 'auth/weak-password') {
+        setError('La contraseña debe tener al menos 6 caracteres.');
+      } else {
+        setError('Algo salió mal. Por favor, inténtalo de nuevo.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-obsidian-bg flex flex-col items-center justify-center p-6 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-obsidian-soft/20 via-obsidian-bg to-obsidian-bg">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="glass-card max-w-md w-full p-8 flex flex-col items-center space-y-8 relative overflow-hidden"
-      >
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500/0 via-emerald-500/50 to-emerald-500/0" />
-        
+    <div className="min-h-screen bg-obsidian-bg flex flex-col items-center justify-center p-6">
+      <div className="glass-card max-w-md w-full p-8 flex flex-col items-center text-center space-y-8">
         <div className="flex flex-col items-center gap-4">
           <Logo className="w-16 h-16" />
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-white tracking-tight">
-              {isRegistering ? 'Crea tu cuenta' : 'Bienvenido a RORA'}
-            </h1>
+          <div>
+            <h1 className="text-2xl font-bold text-white tracking-tight">Bienvenido a RORA</h1>
             <p className="text-obsidian-muted mt-2">
-              {isRegistering ? 'Únete a la nueva era inmobiliaria' : 'Inicia sesión para acceder a tu panel'}
+              {isLogin ? 'Inicia sesión para acceder a tu panel de control' : 'Crea una cuenta para comenzar'}
             </p>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="w-full space-y-5">
-          <AnimatePresence mode="wait">
-            {error && (
-              <motion.div 
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-3 rounded-xl text-center"
-              >
-                {error}
-              </motion.div>
-            )}
-          </AnimatePresence>
+        <form onSubmit={handleSubmit} className="w-full space-y-4">
+          {error && (
+            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-sm text-left">
+              {error}
+            </div>
+          )}
 
-          <div className="space-y-4">
-            <div className="relative group">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-obsidian-muted group-focus-within:text-emerald-500 transition-colors">
-                <Mail className="w-5 h-5" />
-              </div>
-              <input
-                type="email"
+          <div className="space-y-2 text-left">
+            <label className="text-xs font-bold uppercase tracking-widest text-obsidian-muted">Email</label>
+            <div className="relative">
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-obsidian-muted" />
+              <input 
+                type="email" 
                 required
-                placeholder="Correo electrónico"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-obsidian-soft/30 border border-obsidian-muted/20 text-white pl-12 pr-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/50 transition-all placeholder:text-obsidian-muted/50"
+                placeholder="tu@email.com" 
+                className="w-full bg-black/20 border border-obsidian-border rounded-xl pl-11 pr-4 py-3 text-sm outline-none focus:border-obsidian-primary transition-colors"
+                disabled={loading}
               />
             </div>
+          </div>
 
-            <div className="relative group">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-obsidian-muted group-focus-within:text-emerald-500 transition-colors">
-                <Lock className="w-5 h-5" />
-              </div>
-              <input
-                type="password"
+          <div className="space-y-2 text-left">
+            <label className="text-xs font-bold uppercase tracking-widest text-obsidian-muted">Contraseña</label>
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-obsidian-muted" />
+              <input 
+                type="password" 
                 required
-                placeholder="Contraseña"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-obsidian-soft/30 border border-obsidian-muted/20 text-white pl-12 pr-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/50 transition-all placeholder:text-obsidian-muted/50"
+                placeholder="••••••••" 
+                className="w-full bg-black/20 border border-obsidian-border rounded-xl pl-11 pr-4 py-3 text-sm outline-none focus:border-obsidian-primary transition-colors"
+                disabled={loading}
               />
             </div>
           </div>
@@ -98,38 +92,30 @@ export const Login: React.FC = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-4 px-4 rounded-xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-lg shadow-emerald-500/20"
+            className="w-full bg-obsidian-primary text-obsidian-bg font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50 mt-6"
           >
-            {loading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <>
-                {isRegistering ? 'Crear Cuenta' : 'Acceder'}
-                <ArrowRight className="w-5 h-5" />
-              </>
-            )}
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+            {isLogin ? 'Iniciar Sesión' : 'Registrarse'}
           </button>
         </form>
 
-        <div className="w-full pt-4 border-t border-obsidian-muted/10">
-          <button
-            onClick={() => setIsRegistering(!isRegistering)}
-            className="w-full text-obsidian-muted hover:text-white text-sm font-medium transition-colors flex items-center justify-center gap-2"
+        <div className="w-full pt-4 border-t border-obsidian-border text-sm">
+          <span className="text-obsidian-muted">
+            {isLogin ? '¿No tienes cuenta? ' : '¿Ya tienes cuenta? '}
+          </span>
+          <button 
+            type="button"
+            onClick={() => {
+              setIsLogin(!isLogin);
+              setError('');
+            }}
+            className="text-obsidian-primary font-bold hover:underline"
+            disabled={loading}
           >
-            {isRegistering ? (
-              <>
-                <LogIn className="w-4 h-4" />
-                ¿Ya tienes cuenta? Inicia sesión
-              </>
-            ) : (
-              <>
-                <UserPlus className="w-4 h-4" />
-                ¿No tienes cuenta? Regístrate
-              </>
-            )}
+            {isLogin ? 'Regístrate aquí' : 'Inicia sesión'}
           </button>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 };

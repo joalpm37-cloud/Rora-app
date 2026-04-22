@@ -5,10 +5,6 @@ import { collections } from '../../lib/collections';
 import { Lead, LeadStatus, LeadType, LeadSource } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import { handleFirestoreError, OperationType } from '../../lib/error-handling';
-import { MakeIntegration, sendEventToMake } from '../../services/makeIntegration';
-import { getApiUrl } from '../../lib/api-client';
-
-import { CheckCircle2 } from 'lucide-react';
 
 interface LeadFormProps {
   lead?: Lead | null;
@@ -43,74 +39,17 @@ export const LeadForm: React.FC<LeadFormProps> = ({ lead, onClose }) => {
           ...formData,
           updatedAt: Timestamp.now(),
         });
-        // Sync with Make
-        MakeIntegration.sync('UPDATE_LEAD', { id: lead.id, ...formData });
-
-        // Evento específico para Make.com solicitado
-        await sendEventToMake({
-          type: "lead.updated",
-          payload: {
-            leadId: lead.id,
-            name: formData.name,
-            phone: formData.phone,
-            email: formData.email,
-            status: formData.status,
-            type: formData.type,
-            notes: formData.notes
-          }
-        });
       } else {
         // Create
-        let ghlId = null;
-        try {
-          // Paso 1 & 2: Buscar y crear en GHL vía proxy
-          const response = await fetch(getApiUrl('/api/ghl/contacts/create'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              nombre: formData.name,
-              email: formData.email,
-              telefono: formData.phone
-            })
-          });
-          
-          const ghlRes = await response.json();
-          if (ghlRes && ghlRes.contacto && ghlRes.contacto.id) {
-            ghlId = ghlRes.contacto.id;
-          }
-        } catch (ghlErr) {
-          console.error("Error syncing with GHL:", ghlErr);
-        }
-
-        const newLead = {
+        await addDoc(collections.leads, {
           ...formData,
-          ghl_id: ghlId,
-          agencyId: user.agencyId || 'default-agency', 
+          agencyId: user.agencyId || 'default-agency', // In a real app, get from user profile
           assignedTo: user.uid,
-          score: Math.floor(Math.random() * 100), 
+          score: Math.floor(Math.random() * 100), // Mock AI score for new leads
           aiAnalysis: 'Análisis pendiente...',
           createdAt: Timestamp.now(),
           updatedAt: Timestamp.now(),
-        };
-
-        const docRef = await addDoc(collections.leads, newLead);
-        
-        // Sync with n8n
-        try {
-          await fetch("https://rora.app.n8n.cloud/webhook-test/create-lead", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              leadId: docRef.id,
-              ghlId: ghlId,
-              ...newLead
-            })
-          });
-        } catch (webhookErr) {
-          console.error("Error sending to n8n:", webhookErr);
-        }
+        });
       }
       onClose();
     } catch (error) {

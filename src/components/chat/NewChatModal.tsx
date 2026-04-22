@@ -6,7 +6,6 @@ import { collections } from '../../lib/collections';
 import { User } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import { handleFirestoreError, OperationType } from '../../lib/error-handling';
-import { sendEventToMake } from '../../services/makeIntegration';
 
 interface NewChatModalProps {
   onClose: () => void;
@@ -66,20 +65,6 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onChatCreat
         },
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now()
-      });
-      
-      await sendEventToMake({
-        type: "chat.created",
-        payload: {
-          conversationId: newConvRef.id,
-          agencyId: user.agencyId || 'default-agency',
-          participants: [user.uid, targetUser.uid],
-          participantNames: {
-            [user.uid]: user.displayName || user.email || 'Unknown',
-            [targetUser.uid]: targetUser.name || targetUser.email || 'Unknown'
-          },
-          createdAt: new Date().toISOString()
-        }
       });
       
       onChatCreated(newConvRef.id);

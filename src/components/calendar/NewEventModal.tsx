@@ -1,38 +1,26 @@
 import React, { useState } from 'react';
 import { X, Calendar as CalendarIcon, Clock, MapPin, User as UserIcon, FileText } from 'lucide-react';
-import { addDoc, updateDoc, doc, Timestamp } from 'firebase/firestore';
+import { addDoc, Timestamp } from 'firebase/firestore';
 import { collections } from '../../lib/collections';
 import { useAuth } from '../../contexts/AuthContext';
 import { handleFirestoreError, OperationType } from '../../lib/error-handling';
-import { EventType, CalendarEvent } from '../../types';
-import { MakeIntegration, sendEventToMake } from '../../services/makeIntegration';
-import { getApiUrl } from '../../lib/api-client';
+import { EventType } from '../../types';
 
 interface NewEventModalProps {
   onClose: () => void;
   selectedDate?: Date;
-  event?: CalendarEvent | null;
 }
 
-export const NewEventModal: React.FC<NewEventModalProps> = ({ onClose, selectedDate, event }) => {
+export const NewEventModal: React.FC<NewEventModalProps> = ({ onClose, selectedDate }) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-  
-  // Format existing event date/time or use defaults
-  const defaultDate = selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-  let initialDate = defaultDate;
-  if (event?.date) {
-    const d = event.date instanceof Timestamp ? event.date.toDate() : new Date(event.date);
-    initialDate = d.toISOString().split('T')[0];
-  }
-
   const [formData, setFormData] = useState({
-    title: event?.title || '',
-    date: initialDate,
-    time: event?.time || '12:00',
-    type: event?.type || 'meeting' as EventType,
-    clientName: event?.clientName || '',
-    location: event?.location || '',
+    title: '',
+    date: selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    time: '12:00',
+    type: 'meeting' as EventType,
+    clientName: '',
+    location: '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -40,100 +28,28 @@ export const NewEventModal: React.FC<NewEventModalProps> = ({ onClose, selectedD
     if (!user) return;
     
     setLoading(true);
-    let ghlEventId = null;
-
     try {
       // Create a Date object from the date and time strings
       const [year, month, day] = formData.date.split('-').map(Number);
       const [hours, minutes] = formData.time.split(':').map(Number);
       const eventDate = new Date(year, month - 1, day, hours, minutes);
 
-      // Bidirectional sync with GHL for new events
-      if (!event) {
-        try {
-          const response = await fetch(getApiUrl('/api/ghl/appointments/create'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              title: formData.title,
-              startTime: eventDate.toISOString(),
-            })
-          });
-          const ghlRes = await response.json();
-          if (ghlRes && ghlRes.id) {
-            ghlId = ghlRes.id; // Using ghlId variable defined at top of try block
-          }
-        } catch (ghlErr) {
-          console.error("GHL integration failed, continuing with Firebase only:", ghlErr);
-        }
-      }
-
-      if (event && event.id) {
-        // Update existing event
-        const eventRef = doc(collections.calendarEvents, event.id);
-        const updatedEvent = {
-          title: formData.title,
-          date: Timestamp.fromDate(eventDate),
-          time: formData.time,
-          type: formData.type,
-          clientName: formData.clientName,
-          location: formData.location
-        };
-        await updateDoc(eventRef, updatedEvent);
-        
-        await sendEventToMake({
-          type: "appointment.updated",
-          payload: {
-            appointmentId: event.id,
-            agencyId: user.agencyId || 'default-agency',
-            agentId: user.uid,
-            ...updatedEvent,
-            date: eventDate.toISOString()
-          }
-        });
-      } else {
-        // Create new event
-        const newEvent = {
-          agencyId: user.agencyId || 'default-agency',
-          agentId: user.uid,
-          title: formData.title,
-          date: Timestamp.fromDate(eventDate),
-          time: formData.time,
-          type: formData.type,
-          clientName: formData.clientName,
-          location: formData.location,
-          ghl_event_id: ghlEventId,
-          sincronizado: !!ghlEventId,
-          createdAt: Timestamp.now()
-        };
-
-        const docRef = await addDoc(collections.calendarEvents, newEvent);
-        
-        // Sync with Make
-        MakeIntegration.sync('NEW_APPOINTMENT', { id: docRef.id, ...newEvent, isoDate: eventDate.toISOString() });
-
-        // Evento específico para Make.com
-        await sendEventToMake({
-          type: "appointment.created",
-          payload: {
-            appointmentId: docRef.id,
-            agencyId: user.agencyId || 'default-agency',
-            agentId: user.uid,
-            title: formData.title,
-            date: eventDate.toISOString(),
-            time: formData.time,
-            type: formData.type,
-            clientName: formData.clientName,
-            location: formData.location,
-            ghl_event_id: ghlEventId
-          }
-        });
-      }
+      await addDoc(collections.calendarEvents, {
+        agencyId: user.agencyId || 'default-agency',
+        agentId: user.uid,
+        title: formData.title,
+        date: Timestamp.fromDate(eventDate),
+        time: formData.time,
+        type: formData.type,
+        clientName: formData.clientName,
+        location: formData.location,
+        createdAt: Timestamp.now()
+      });
       
       onClose();
     } catch (error) {
-      handleFirestoreError(error, event ? OperationType.UPDATE : OperationType.CREATE, 'calendarEvents');
-      alert(event ? 'Error al actualizar el evento' : 'Error al crear el evento');
+      handleFirestoreError(error, OperationType.CREATE, 'calendarEvents');
+      alert('Error al crear el evento');
     } finally {
       setLoading(false);
     }
@@ -143,7 +59,7 @@ export const NewEventModal: React.FC<NewEventModalProps> = ({ onClose, selectedD
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div className="bg-obsidian-bg border border-obsidian-border rounded-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
         <div className="flex items-center justify-between p-6 border-b border-obsidian-border">
-          <h2 className="text-xl font-bold">{event ? 'Editar Evento' : 'Nuevo Evento'}</h2>
+          <h2 className="text-xl font-bold">Nuevo Evento</h2>
           <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
             <X className="w-5 h-5" />
           </button>
@@ -254,7 +170,7 @@ export const NewEventModal: React.FC<NewEventModalProps> = ({ onClose, selectedD
             disabled={loading}
             className="flex-1 py-3 px-4 bg-obsidian-primary text-obsidian-bg rounded-xl text-sm font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
           >
-            {loading ? 'Guardando...' : (event ? 'Actualizar Evento' : 'Guardar Evento')}
+            {loading ? 'Guardando...' : 'Guardar Evento'}
           </button>
         </div>
       </div>

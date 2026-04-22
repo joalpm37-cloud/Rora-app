@@ -12,15 +12,12 @@ import {
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { onSnapshot, query, orderBy, collection, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { onSnapshot, query, orderBy } from 'firebase/firestore';
 import { collections } from '../lib/collections';
 import { Lead } from '../types';
 import { LeadForm } from '../components/leads/LeadForm';
 import { LeadProfile } from '../components/leads/LeadProfile';
 import { handleFirestoreError, OperationType } from '../lib/error-handling';
-import { fetchGhlContacts } from '../lib/api-client';
-import { RefreshCw, CheckCircle2 } from 'lucide-react';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -29,8 +26,6 @@ function cn(...inputs: ClassValue[]) {
 export const Leads: React.FC = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<{show: boolean, count: number}>({show: false, count: 0});
   const [searchQuery, setSearchQuery] = useState('');
   
   // Modals state
@@ -41,16 +36,6 @@ export const Leads: React.FC = () => {
   useEffect(() => {
     const q = query(collections.leads, orderBy('createdAt', 'desc'));
     
-    // Auto-sync GHL contacts on mount as requested
-    const autoSync = async () => {
-      try {
-        await handleSyncGHL(true); // silent sync
-      } catch (e) {
-        console.error("Auto-sync failed", e);
-      }
-    };
-    autoSync();
-
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const leadsData = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -62,51 +47,13 @@ export const Leads: React.FC = () => {
       try {
         handleFirestoreError(error, OperationType.LIST, 'leads');
       } catch (e) {
-        // Handled
+        // Handled by error boundary or logged
       }
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
-
-  const handleSyncGHL = async (silent = false) => {
-    if (!silent) setIsSyncing(true);
-    try {
-      const ghlContacts = await fetchGhlContacts(100);
-      let importedCount = 0;
-
-      for (const contact of ghlContacts) {
-        // Verificar si ya existe en Firebase
-        const q = query(collection(db, 'leads'), where('ghl_id', '==', contact.id));
-        const snap = await getDocs(q);
-
-        if (snap.empty) {
-          await addDoc(collection(db, 'leads'), {
-            name: `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || 'Sin nombre',
-            email: contact.email || '',
-            phone: contact.phone || '',
-            ghl_id: contact.id,
-            canal: "ghl",
-            status: "new",
-            score: 0,
-            type: "buyer", // default
-            createdAt: serverTimestamp()
-          });
-          importedCount++;
-        }
-      }
-
-      if (!silent && importedCount > 0) {
-        setSyncStatus({ show: true, count: importedCount });
-        setTimeout(() => setSyncStatus({ show: false, count: 0 }), 5000);
-      }
-    } catch (err) {
-      console.error("Error durante la sincronización GHL:", err);
-    } finally {
-      if (!silent) setIsSyncing(false);
-    }
-  };
 
   const filteredLeads = leads.filter(lead => {
     const matchesSearch = lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -128,35 +75,18 @@ export const Leads: React.FC = () => {
 
   return (
     <div className="space-y-8 relative">
-      {syncStatus.show && (
-        <div className="fixed top-24 right-8 bg-emerald-500 text-white px-6 py-3 rounded-2xl shadow-2xl z-[100] flex items-center gap-3 animate-in fade-in slide-in-from-right-4">
-          <CheckCircle2 className="w-5 h-5" />
-          <span className="font-bold text-sm">Sincronización completa — {syncStatus.count} contactos importados</span>
-        </div>
-      )}
-
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Contactos (Leads)</h1>
           <p className="text-obsidian-muted mt-1 text-sm md:text-base">Gestiona y califica tus prospectos con inteligencia artificial.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => handleSyncGHL()}
-            disabled={isSyncing}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-white rounded-xl text-sm font-bold hover:bg-white/10 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={cn("w-4 h-4", isSyncing && "animate-spin")} />
-            {isSyncing ? "Sincronizando..." : "Sincronizar GHL"}
-          </button>
-          <button 
-            onClick={handleCreateNew}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-obsidian-primary text-obsidian-bg rounded-xl text-sm font-bold hover:opacity-90 transition-opacity"
-          >
-            <UserPlus className="w-4 h-4" />
-            Nuevo Lead
-          </button>
-        </div>
+        <button 
+          onClick={handleCreateNew}
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-obsidian-primary text-obsidian-bg rounded-xl text-sm font-bold hover:opacity-90 transition-opacity"
+        >
+          <UserPlus className="w-4 h-4" />
+          Nuevo Lead
+        </button>
       </header>
 
       <div className="flex flex-col md:flex-row items-center gap-4">
@@ -214,12 +144,7 @@ export const Leads: React.FC = () => {
                         {lead.name.substring(0, 2)}
                       </div>
                       <div className="flex flex-col">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold">{lead.name}</span>
-                          {lead.ghl_id && (
-                            <span className="px-1.5 py-0.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded text-[9px] font-bold">GHL</span>
-                          )}
-                        </div>
+                        <span className="text-sm font-bold">{lead.name}</span>
                         <span className="text-xs text-obsidian-muted">{lead.email || lead.phone}</span>
                       </div>
                     </div>

@@ -2,7 +2,6 @@ import React from 'react';
 import { Sidebar } from './Sidebar';
 import { MobileHeader } from './MobileHeader';
 import { BottomNav } from './BottomNav';
-import { QualificationNotifier } from './QualificationNotifier';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -19,7 +18,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
       </main>
       <BottomNav />
-      <QualificationNotifier />
     </div>
   );
 };

@@ -63,10 +63,6 @@ export interface Property {
   privateNotes: string;
   status: PropertyStatus;
   matchedLeads: string[];
-  // Marketing & Vibe (Phase 3.8)
-  videoStyle?: string;
-  targetAudience?: string;
-  usp?: string;
   createdAt: Timestamp | Date;
 }
 
@@ -101,7 +97,6 @@ export interface CalendarEvent {
 }
 
 export type MessageType = 'text' | 'ai_response' | 'system_notification';
-export type MessageChannel = 'web' | 'whatsapp' | 'instagram' | 'messenger';
 
 export interface Message {
   id?: string;
@@ -109,7 +104,6 @@ export interface Message {
   senderId: string;
   text: string;
   type: MessageType;
-  channel?: MessageChannel;
   readBy: string[];
   createdAt: Timestamp | Date;
 }
@@ -119,7 +113,6 @@ export interface Conversation {
   agencyId: string;
   participants: string[];
   participantNames?: Record<string, string>;
-  channel?: MessageChannel;
   lastMessage?: string;
   lastMessageAt?: Timestamp | Date;
   unreadCount?: Record<string, number>;
@@ -128,6 +121,32 @@ export interface Conversation {
 }
 
 export type AgentType = 'crm' | 'performance' | 'content' | 'scout';
+export type AgentStatus = 'Activo' | 'Inactivo' | 'Mantenimiento';
+
+export interface AIAgent {
+  id?: string;
+  agencyId: string;
+  name: string;
+  type: AgentType;
+  description: string;
+  status: AgentStatus;
+  performance: number;
+  tasks: number;
+  iconType: string;
+  lastActiveAt?: Timestamp | Date;
+  createdAt: Timestamp | Date;
+  updatedAt: Timestamp | Date;
+}
+
+export interface AILog {
+  id?: string;
+  agencyId: string;
+  agentId: string;
+  agentName: string;
+  message: string;
+  createdAt: Timestamp | Date;
+}
+
 export type NotificationStatus = 'pending' | 'approved' | 'rejected';
 export type NotificationPriority = 'urgent' | 'normal' | 'info';
 
@@ -145,18 +164,15 @@ export interface Notification {
 }
 
 export type CampaignPlatform = 'Instagram' | 'Facebook' | 'Google Ads' | 'LinkedIn' | 'TikTok';
-export type CampaignStatus = 'Activa' | 'Pausada' | 'Completada' | 'Borrador' | 'Lista para lanzar';
+export type CampaignStatus = 'Activa' | 'Pausada' | 'Completada' | 'Borrador';
 
 export interface Campaign {
   id?: string;
   agencyId: string;
   name: string;
-  property?: string;
   platform: CampaignPlatform;
   status: CampaignStatus;
   budget: number;
-  duration?: number;
-  strategy?: any;
   spent: number;
   leads: number;
   cpl: number;

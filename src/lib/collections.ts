@@ -9,7 +9,9 @@ import type {
   Notification,
   Conversation,
   CalendarEvent,
-  Campaign
+  Campaign,
+  AIAgent,
+  AILog
 } from '../types';
 
 // Helper to create typed collection references
@@ -27,4 +29,6 @@ export const collections = {
   conversations: createCollection<Conversation>('conversations'),
   calendarEvents: createCollection<CalendarEvent>('calendarEvents'),
   campaigns: createCollection<Campaign>('campaigns'),
+  aiAgents: createCollection<AIAgent>('ai_agents'),
+  aiLogs: createCollection<AILog>('ai_logs')
 };
